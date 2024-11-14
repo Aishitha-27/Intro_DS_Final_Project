@@ -1,0 +1,146 @@
+---
+title: "Understanding Sales patterns and return dynamics in E-Commerce"
+author: Team 3
+output: html_document
+date: "2024-11-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r basic_libraries, include=FALSE}
+library(ezids)
+library(ggplot2)
+library(dplyr)
+library(leaflet)
+library(tidyverse)
+```
+
+
+
+#Glimpse of a dataset
+```{r}
+data=read.csv("online_sales_dataset.csv")
+head(data, 5)
+```
+## Structure and Summary of Dataset
+
+```{r}
+str(data)
+```
+
+
+
+```{r}
+xkablesummary(data, title = "Summary of Dataset")
+```
+
+```{r}
+# Count missing values in each column
+missing_values <- sapply(data, function(x) sum(is.na(x)))
+missing_values
+```
+
+```{r}
+# Drop rows with missing values
+data_clean<- na.omit(data)
+```
+
+
+```{r}
+# Count missing values in each column
+missing_values <- sapply(data_clean, function(x) sum(is.na(x)))
+missing_values
+```
+
+
+```{r}
+dim(data_clean)
+```
+
+
+```{r}
+# Randomly sample 10,000 rows from the cleaned data
+
+set.seed(123) 
+data_reduced <- data_clean %>% sample_n(10000)
+
+```
+
+```{r}
+# Check the number of rows in the reduced dataset
+num_rows <- nrow(data_reduced)
+num_rows  # This should output 10000 if the reduction was successful
+
+# Alternatively, use the dim() function to check both rows and columns
+dim(data_reduced)
+
+```
+
+
+
+```{r}
+# Boxplot for Quantity to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = Quantity)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Quantity", y = "Quantity") +
+    theme_minimal()
+
+# Boxplot for UnitPrice to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = UnitPrice)) +
+    geom_boxplot(ofill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of UnitPrice", y = "Unit Price") +
+    theme_minimal()
+
+# Boxplot for Discount to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = Discount)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Discount", y = "Discount") +
+    theme_minimal()
+```
+
+
+```{r}
+# Function to remove outliers based on IQR
+
+remove_outliers <- function(x) {
+    Q1 <- quantile(x, 0.25)
+    Q3 <- quantile(x, 0.75)
+    IQR <- Q3 - Q1
+    x[x < (Q1 - 1.5 * IQR) | x > (Q3 + 1.5 * IQR)] <- NA
+    return(x)
+}
+
+# Apply the outlier removal function to relevant columns
+
+data_reduced$Quantity <- remove_outliers(data_reduced$Quantity)
+data_reduced$UnitPrice <- remove_outliers(data_reduced$UnitPrice)
+data_reduced$Discount <- remove_outliers(data_reduced$Discount)
+
+# Remove rows with any newly introduced NAs from outlier removal
+
+data_reduced <- na.omit(data_reduced)
+
+```
+
+
+
+```{r}
+
+# Filter data for relevant categories
+
+accessories <- data_reduced %>% filter(Category == "Accessories") %>% pull(UnitPrice)
+electronics <- data_reduced %>% filter(Category == "Electronics") %>% pull(UnitPrice)
+
+# Perform a t-test
+
+t_test_result <- t.test(accessories, electronics, alternative = "two.sided", var.equal = FALSE)
+t_test_result
+
+
+
+```
