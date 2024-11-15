@@ -68,54 +68,73 @@ dim(data_reduced)
 ```
 ```{r}
 
-# Box plot for Quantity
-ggplot(data, aes(y = Quantity)) +
-  geom_boxplot(fill = "lightblue") +
-  ggtitle("Box Plot of Quantity") +
-  ylab("Quantity")
+# Boxplot for Quantity to visualize outliers
 
-# Box plot for Unit Price
-ggplot(data, aes(y = UnitPrice)) +
-  geom_boxplot(fill = "lightgreen") +
-  ggtitle("Box Plot of Unit Price") +
-  ylab("Unit Price")
+ggplot(data_reduced, aes(x = "", y = Quantity)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Quantity", y = "Quantity") +
+    theme_minimal()
 
-# Box plot for Discount
-ggplot(data, aes(y = Discount)) +
-  geom_boxplot(fill = "lightcoral") +
-  ggtitle("Box Plot of Discount") +
-  ylab("Discount")
+# Boxplot for UnitPrice to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = UnitPrice)) +
+    geom_boxplot(ofill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of UnitPrice", y = "Unit Price") +
+    theme_minimal()
+
+# Boxplot for Discount to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = Discount)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Discount", y = "Discount") +
+    theme_minimal()
+```
 
 
-outliers_quantity <- outlier(data$Quantity)
-outliers_unit_price <- outlier(data$UnitPrice)
-outliers_discount <- outlier(data$Discount)
-
-print("Outliers in Quantity:")
-print(outliers_quantity)
-
-print("Outliers in Unit Price:")
-print(outliers_unit_price)
-
-print("Outliers in Discount:")
-print(outliers_discount)
-
-remove_outliers <- function(df, column) {
-  Q1 <- quantile(df[[column]], 0.25, na.rm = TRUE)
-  Q3 <- quantile(df[[column]], 0.75, na.rm = TRUE)
-  IQR <- Q3 - Q1
-  lower_bound <- Q1 - 1.5 * IQR
-  upper_bound <- Q3 + 1.5 * IQR
-  df %>% filter(df[[column]] >= lower_bound & df[[column]] <= upper_bound)
+```{r}
+# Function to identify outliers using kernel density estimation
+kd2_outliers <- function(column) {
+  density <- density(column, na.rm = TRUE)
+  threshold <- 0.01  # Define a threshold for low-density regions
+  outlier_indices <- which(density(column)$y < threshold)
+  return(outlier_indices)
 }
 
+# Identify outliers in data_reduced using kd2
+outliers_quantity <- kd2_outliers(data_reduced$Quantity)
+outliers_unit_price <- kd2_outliers(data_reduced$UnitPrice)
+outliers_discount <- kd2_outliers(data_reduced$Discount)
 
-cleaned_data <- data %>%
-  remove_outliers("Quantity") %>%
-  remove_outliers("UnitPrice") %>%
-  remove_outliers("Discount")
+# Print outlier indices
+print("Outliers in Quantity (by kd2):")
+print(outliers_quantity)
 
+print("Outliers in Unit Price (by kd2):")
+print(outliers_unit_price)
 
+print("Outliers in Discount (by kd2):")
+print(outliers_discount)
+
+# Function to remove outliers from a specific column using kd2
+remove_kd2_outliers <- function(df, column) {
+  density <- density(df[[column]], na.rm = TRUE)
+  threshold <- 0.01  # Define a threshold for low-density regions
+  outlier_indices <- which(density$y < threshold)
+  if (length(outlier_indices) > 0) {
+    df <- df[-outlier_indices, ]
+  }
+  return(df)
+}
+
+# Remove outliers using kd2
+cleaned_data <- data_reduced %>%
+  remove_kd2_outliers("Quantity") %>%
+  remove_kd2_outliers("UnitPrice") %>%
+  remove_kd2_outliers("Discount")
+```
+
+```{r}
+# Display the first few rows of the cleaned dataset
 head(cleaned_data)
 ```
 
