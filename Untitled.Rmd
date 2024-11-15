@@ -128,12 +128,3 @@ cleaned_data <- data_reduced %>%
 ```{r}
 str(cleaned_data)
 ```
-
-```{r}
-# Display the first few rows of the cleaned dataset
-head(cleaned_data)
-```
-
-```{r}
-head(data_reduced)
-```
