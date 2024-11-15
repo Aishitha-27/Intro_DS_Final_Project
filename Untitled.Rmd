@@ -92,30 +92,23 @@ ggplot(data_reduced, aes(x = "", y = Discount)) +
 
 
 ```{r}
-# Function to identify outliers using kernel density estimation
 kd2_outliers <- function(column) {
   density <- density(column, na.rm = TRUE)
   threshold <- 0.01  # Define a threshold for low-density regions
   outlier_indices <- which(density(column)$y < threshold)
-  return(outlier_indices)
+  return(length(outlier_indices))  # Return the count of outliers
 }
 
-# Identify outliers in data_reduced using kd2
 outliers_quantity <- kd2_outliers(data_reduced$Quantity)
 outliers_unit_price <- kd2_outliers(data_reduced$UnitPrice)
 outliers_discount <- kd2_outliers(data_reduced$Discount)
 
-# Print outlier indices
-print("Outliers in Quantity (by kd2):")
-print(outliers_quantity)
+cat("Outliers in Quantity:", outliers_quantity, "\n")
+cat("Outliers in Unit Price:", outliers_unit_price, "\n")
+cat("Outliers in Discount:", outliers_discount, "\n")
+```
 
-print("Outliers in Unit Price (by kd2):")
-print(outliers_unit_price)
-
-print("Outliers in Discount (by kd2):")
-print(outliers_discount)
-
-# Function to remove outliers from a specific column using kd2
+```{r}
 remove_kd2_outliers <- function(df, column) {
   density <- density(df[[column]], na.rm = TRUE)
   threshold <- 0.01  # Define a threshold for low-density regions
@@ -126,11 +119,14 @@ remove_kd2_outliers <- function(df, column) {
   return(df)
 }
 
-# Remove outliers using kd2
 cleaned_data <- data_reduced %>%
   remove_kd2_outliers("Quantity") %>%
   remove_kd2_outliers("UnitPrice") %>%
   remove_kd2_outliers("Discount")
+```
+
+```{r}
+str(cleaned_data)
 ```
 
 ```{r}
