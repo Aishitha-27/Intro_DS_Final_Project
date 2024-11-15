@@ -65,5 +65,49 @@ nrow(data_reduced)
 ```{r}
 dim(data_reduced)
 ```
+```{r}
 
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(df[[column]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(df[[column]], 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  df %>% filter(df[[column]] >= lower_bound & df[[column]] <= upper_bound)
+}
 
+# Remove outliers from relevant columns
+cleaned_data <- data %>%
+  remove_outliers("Quantity") %>%
+  remove_outliers("UnitPrice") %>%
+  remove_outliers("Discount")
+
+# Plotting the distribution of Unit Price
+ggplot(cleaned_data, aes(x = UnitPrice)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  ggtitle("Distribution of Unit Price") +
+  xlab("Unit Price") +
+  ylab("Frequency")
+
+# Plotting the distribution of Quantity
+ggplot(cleaned_data, aes(x = Quantity)) +
+  geom_histogram(bins = 30, fill = "orange", alpha = 0.7) +
+  ggtitle("Distribution of Quantity") +
+  xlab("Quantity") +
+  ylab("Frequency")
+
+# Plotting the distribution of Discount
+ggplot(cleaned_data, aes(x = Discount)) +
+  geom_histogram(bins = 30, fill = "green", alpha = 0.7) +
+  ggtitle("Distribution of Discount") +
+  xlab("Discount") +
+  ylab("Frequency")
+
+# Scatter plot of Quantity vs Unit Price by Category
+ggplot(cleaned_data, aes(x = Quantity, y = UnitPrice, color = Category)) +
+  geom_point(alpha = 0.7) +
+  ggtitle("Quantity vs Unit Price by Category") +
+  xlab("Quantity") +
+  ylab("Unit Price") +
+  theme_minimal()
+```
