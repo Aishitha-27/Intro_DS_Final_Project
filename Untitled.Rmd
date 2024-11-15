@@ -15,6 +15,7 @@ library(ggplot2)
 library(dplyr)
 library(leaflet)
 library(tidyverse)
+library(outliers)
 ```
 
 
@@ -67,6 +68,38 @@ dim(data_reduced)
 ```
 ```{r}
 
+# Box plot for Quantity
+ggplot(data, aes(y = Quantity)) +
+  geom_boxplot(fill = "lightblue") +
+  ggtitle("Box Plot of Quantity") +
+  ylab("Quantity")
+
+# Box plot for Unit Price
+ggplot(data, aes(y = UnitPrice)) +
+  geom_boxplot(fill = "lightgreen") +
+  ggtitle("Box Plot of Unit Price") +
+  ylab("Unit Price")
+
+# Box plot for Discount
+ggplot(data, aes(y = Discount)) +
+  geom_boxplot(fill = "lightcoral") +
+  ggtitle("Box Plot of Discount") +
+  ylab("Discount")
+
+
+outliers_quantity <- outlier(data$Quantity)
+outliers_unit_price <- outlier(data$UnitPrice)
+outliers_discount <- outlier(data$Discount)
+
+print("Outliers in Quantity:")
+print(outliers_quantity)
+
+print("Outliers in Unit Price:")
+print(outliers_unit_price)
+
+print("Outliers in Discount:")
+print(outliers_discount)
+
 remove_outliers <- function(df, column) {
   Q1 <- quantile(df[[column]], 0.25, na.rm = TRUE)
   Q3 <- quantile(df[[column]], 0.75, na.rm = TRUE)
@@ -76,38 +109,16 @@ remove_outliers <- function(df, column) {
   df %>% filter(df[[column]] >= lower_bound & df[[column]] <= upper_bound)
 }
 
-# Remove outliers from relevant columns
+
 cleaned_data <- data %>%
   remove_outliers("Quantity") %>%
   remove_outliers("UnitPrice") %>%
   remove_outliers("Discount")
 
-# Plotting the distribution of Unit Price
-ggplot(cleaned_data, aes(x = UnitPrice)) +
-  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
-  ggtitle("Distribution of Unit Price") +
-  xlab("Unit Price") +
-  ylab("Frequency")
 
-# Plotting the distribution of Quantity
-ggplot(cleaned_data, aes(x = Quantity)) +
-  geom_histogram(bins = 30, fill = "orange", alpha = 0.7) +
-  ggtitle("Distribution of Quantity") +
-  xlab("Quantity") +
-  ylab("Frequency")
+head(cleaned_data)
+```
 
-# Plotting the distribution of Discount
-ggplot(cleaned_data, aes(x = Discount)) +
-  geom_histogram(bins = 30, fill = "green", alpha = 0.7) +
-  ggtitle("Distribution of Discount") +
-  xlab("Discount") +
-  ylab("Frequency")
-
-# Scatter plot of Quantity vs Unit Price by Category
-ggplot(cleaned_data, aes(x = Quantity, y = UnitPrice, color = Category)) +
-  geom_point(alpha = 0.7) +
-  ggtitle("Quantity vs Unit Price by Category") +
-  xlab("Quantity") +
-  ylab("Unit Price") +
-  theme_minimal()
+```{r}
+head(data_reduced)
 ```
