@@ -128,3 +128,147 @@ cleaned_data <- data_reduced %>%
 ```{r}
 str(cleaned_data)
 ```
+```{r}
+#VISUALIZATION
+
+# Aggregate sales data
+data_reduced$Sales <- data_reduced$Quantity * data_reduced$UnitPrice
+sales_by_country <- data_reduced %>%
+  group_by(Country) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+```
+```{r}
+# Plot
+ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Total Sales by Country", x = "Country", y = "Total Sales") +
+  theme_minimal()
+```
+
+
+
+```{r}
+# Count return statuses
+return_status_counts <- data_reduced %>%
+  group_by(ReturnStatus) %>%
+  summarise(Count = n())
+
+# Plot
+ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(title = "Proportion of Return Statuses", x = NULL, y = NULL) +
+  theme_void() +
+  theme(legend.title = element_blank())
+```
+
+
+```{r}
+# Aggregate sales by product
+sales_by_product <- data_reduced %>%
+  group_by(Description) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%
+  arrange(desc(TotalSales)) %>%
+  slice(1:10)
+
+# Plot
+ggplot(sales_by_product, aes(x = reorder(Description, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Products by Sales", x = "Product", y = "Total Sales") +
+  theme_minimal()
+```
+
+```{r}
+library(reshape2)
+```
+
+```{r}
+# Aggregate sales by warehouse and category
+sales_heatmap_data <- data_reduced %>%
+  group_by(WarehouseLocation, Category) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%
+  pivot_wider(names_from = Category, values_from = TotalSales, values_fill = 0)
+
+# Plot heatmap
+heatmap_data <- melt(sales_heatmap_data, id.vars = "WarehouseLocation")
+
+ggplot(heatmap_data, aes(x = variable, y = WarehouseLocation, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "blue", na.value = "gray") +
+  labs(title = "Sales Heatmap by Warehouse and Category", x = "Category", y = "WarehouseLocation", fill = "Sales") +
+  theme_minimal()
+```
+
+```{r}
+# Histogram of sales
+ggplot(data_reduced, aes(x = Sales)) +
+  geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
+  labs(
+    title = "Distribution of Sales",
+    x = "Sales Amount",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+```{r}
+colnames(cleaned_data)
+```
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Create Sales column if it doesn't already exist
+cleaned_data <- cleaned_data %>%
+  mutate(Sales = Quantity * UnitPrice)
+
+# Ensure InvoiceDate is in Date format if not already
+cleaned_data$InvoiceDate <- as.Date(cleaned_data$InvoiceDate, format = "%Y-%m-%d")  # Adjust the format if necessary
+
+# Check if Sales and Category columns exist in cleaned_data
+if ("Sales" %in% colnames(cleaned_data) && "Category" %in% colnames(cleaned_data)) {
+  
+  # Aggregate sales by Year-Month and Category
+  category_sales <- cleaned_data %>%
+    mutate(YearMonth = as.Date(paste0(format(InvoiceDate, "%Y-%m"), "-01"))) %>%
+    group_by(YearMonth, Category) %>%
+    summarise(TotalSales = sum(Sales, na.rm = TRUE), .groups = "drop")
+
+  # Check the result after summarising
+  head(category_sales)
+  
+  # Line plot for sales trends by category
+  ggplot(category_sales, aes(x = YearMonth, y = TotalSales, color = Category)) +
+    geom_line(size = 1) +
+    labs(
+      title = "Sales Trends by Product Category",
+      x = "Time (Year-Month)",
+      y = "Total Sales",
+      color = "Category"
+    ) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+} else {
+  print("Error: 'Sales' or 'Category' column not found in the data.")
+}
+```
+
+```{r}
+ggplot(category_sales, aes(x = YearMonth, y = TotalSales, fill = Category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Stacked Sales by Category Over Time",
+    x = "Time (Year-Month)",
+    y = "Total Sales",
+    fill = "Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+
+
