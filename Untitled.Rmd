@@ -129,133 +129,113 @@ cleaned_data <- data_reduced %>%
 str(cleaned_data)
 ```
 ```{r}
-#VISUALIZATION
-
-# Aggregate sales data
-data_reduced$Sales <- data_reduced$Quantity * data_reduced$UnitPrice
-sales_by_country <- data_reduced %>%
-  group_by(Country) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+library(dplyr)
 ```
 ```{r}
-# Plot
+library(ggplot2)
+```
+```{r}
+# Check column names of cleaned_data
+names(cleaned_data)
+
+```
+```{r}
+# Summarize total sales by country
+sales_by_country <- cleaned_data %>%
+  group_by(Country) %>%
+  summarise(Sales = sum(Sales, na.rm = TRUE))
+```
+```{r}
+#VISUALIZATION
+# Total Sales by Country
+sales_by_country <- cleaned_data %>%
+  group_by(Country) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+
 ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   coord_flip() +
-  labs(title = "Total Sales by Country", x = "Country", y = "Total Sales") +
-  theme_minimal()
-```
-
-
-
-```{r}
-# Count return statuses
-return_status_counts <- data_reduced %>%
-  group_by(ReturnStatus) %>%
-  summarise(Count = n())
-
-# Plot
-ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start = 0) +
-  labs(title = "Proportion of Return Statuses", x = NULL, y = NULL) +
-  theme_void() +
-  theme(legend.title = element_blank())
-```
-
-
-```{r}
-# Aggregate sales by product
-sales_by_product <- data_reduced %>%
-  group_by(Description) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%
-  arrange(desc(TotalSales)) %>%
-  slice(1:10)
-
-# Plot
-ggplot(sales_by_product, aes(x = reorder(Description, TotalSales), y = TotalSales)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
-  labs(title = "Top 10 Products by Sales", x = "Product", y = "Total Sales") +
-  theme_minimal()
-```
-
-```{r}
-library(reshape2)
-```
-
-```{r}
-# Aggregate sales by warehouse and category
-sales_heatmap_data <- data_reduced %>%
-  group_by(WarehouseLocation, Category) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%
-  pivot_wider(names_from = Category, values_from = TotalSales, values_fill = 0)
-
-# Plot heatmap
-heatmap_data <- melt(sales_heatmap_data, id.vars = "WarehouseLocation")
-
-ggplot(heatmap_data, aes(x = variable, y = WarehouseLocation, fill = value)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient(low = "white", high = "blue", na.value = "gray") +
-  labs(title = "Sales Heatmap by Warehouse and Category", x = "Category", y = "WarehouseLocation", fill = "Sales") +
-  theme_minimal()
-```
-
-```{r}
-# Histogram of sales
-ggplot(data_reduced, aes(x = Sales)) +
-  geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
   labs(
-    title = "Distribution of Sales",
-    x = "Sales Amount",
-    y = "Frequency"
+    title = "Total Sales by Country",
+    x = "Country",
+    y = "Total Sales"
   ) +
   theme_minimal()
 ```
 ```{r}
-colnames(cleaned_data)
+# Proportion of Return Statuses
+return_status_counts <- cleaned_data %>%
+  group_by(ReturnStatus) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = (Count / sum(Count)) * 100)  # Calculate the percentage
+
+# Plot with percentages
+ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +  # Add percentage labels
+  labs(
+    title = "Proportion of Return Statuses",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+str(cleaned_data)
 ```
 ```{r}
 library(dplyr)
 library(ggplot2)
-
-# Create Sales column if it doesn't already exist
-cleaned_data <- cleaned_data %>%
-  mutate(Sales = Quantity * UnitPrice)
-
-# Ensure InvoiceDate is in Date format if not already
-cleaned_data$InvoiceDate <- as.Date(cleaned_data$InvoiceDate, format = "%Y-%m-%d")  # Adjust the format if necessary
-
-# Check if Sales and Category columns exist in cleaned_data
-if ("Sales" %in% colnames(cleaned_data) && "Category" %in% colnames(cleaned_data)) {
-  
-  # Aggregate sales by Year-Month and Category
-  category_sales <- cleaned_data %>%
-    mutate(YearMonth = as.Date(paste0(format(InvoiceDate, "%Y-%m"), "-01"))) %>%
-    group_by(YearMonth, Category) %>%
-    summarise(TotalSales = sum(Sales, na.rm = TRUE), .groups = "drop")
-
-  # Check the result after summarising
-  head(category_sales)
-  
-  # Line plot for sales trends by category
-  ggplot(category_sales, aes(x = YearMonth, y = TotalSales, color = Category)) +
-    geom_line(size = 1) +
-    labs(
-      title = "Sales Trends by Product Category",
-      x = "Time (Year-Month)",
-      y = "Total Sales",
-      color = "Category"
-    ) +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-} else {
-  print("Error: 'Sales' or 'Category' column not found in the data.")
-}
 ```
-
 ```{r}
+# Summarize total sales by product description
+top_products <- cleaned_data %>%
+  group_by(Description) %>%  # Use 'Description' as it matches your dataset
+  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%  # Sum of 'Sales'
+  arrange(desc(TotalSales)) %>%  # Arrange by descending total sales
+  slice(1:10)  # Select the top 10 products
+
+# Plotting top 10 products by total sales
+ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(
+    title = "Top 10 Products by Total Sales",
+    x = "Product Description",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+
+```
+```{r}
+install.packages("tidyr")  # Install if not already installed
+library(tidyr)             # Load the package
+```
+```{r}
+library(reshape2)  
+```
+```{r}
+names(cleaned_data)
+```
+```{r}
+library(lubridate)
+```
+```{r}
+cleaned_data <- cleaned_data %>%
+  mutate(InvoiceDate = as.POSIXct(InvoiceDate, format = "%Y-%m-%d %H:%M"))
+
+# Create YearMonth column
+cleaned_data <- cleaned_data %>%
+  mutate(YearMonth = format(InvoiceDate, "%Y-%m"))
+
+# Stacked Sales by Category Over Time
+category_sales <- cleaned_data %>%
+  group_by(YearMonth, Category) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE), .groups = "drop")
+
 ggplot(category_sales, aes(x = YearMonth, y = TotalSales, fill = Category)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
@@ -266,9 +246,93 @@ ggplot(category_sales, aes(x = YearMonth, y = TotalSales, fill = Category)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+# Total Sales by Payment Method
+sales_by_payment <- cleaned_data %>%
+  group_by(PaymentMethod) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+
+ggplot(sales_by_payment, aes(x = reorder(PaymentMethod, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  coord_flip() +
+  labs(
+    title = "Total Sales by Payment Method",
+    x = "Payment Method",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+```
+```{r}
+# Pie chart of top-selling products
+top_products_pie <- top_products %>%
+  ggplot(aes(x = "", y = TotalSales, fill = Description)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(
+    title = "Top 10 Products by Total Sales",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() +
+  theme(legend.title = element_blank())
+# Display the plot
+top_products_pie
 
 ```
 
+
+```{r}
+# Sales Distribution by Order Priority
+sales_by_priority <- cleaned_data %>%
+  group_by(OrderPriority) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+
+ggplot(sales_by_priority, aes(x = reorder(OrderPriority, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  coord_flip() +
+  labs(
+    title = "Sales Distribution by Order Priority",
+    x = "Order Priority",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Top 10 countries by total sales
+top_countries <- sales_by_country %>%
+  arrange(desc(TotalSales)) %>%
+  slice(1:10)
+
+ggplot(top_countries, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "lightcoral") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Total Sales",
+    x = "Country",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+
+
+```
+```{r}
+# Total Sales by Category and Return Status
+sales_by_category_return <- cleaned_data %>%
+  group_by(Category, ReturnStatus) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+
+ggplot(sales_by_category_return, aes(x = Category, y = TotalSales, fill = ReturnStatus)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Total Sales by Category and Return Status",
+    x = "Category",
+    y = "Total Sales",
+    fill = "Return Status"
+  ) +
+  theme_minimal()
+```
 
 
 
