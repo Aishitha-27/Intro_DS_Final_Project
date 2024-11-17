@@ -1,0 +1,420 @@
+---
+title: "Understanding Sales patterns and return dynamics in E-Commerce"
+author: "Team 3"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: true
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r basic_libraries, include=FALSE}
+library(ezids)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(outliers)
+library(reshape2) 
+library(lubridate)
+library(scales)
+```
+
+# Introduction
+
+## Source of the Dataset
+
+## SMART Framework Questions
+
+## Exploratory Data Analysis 
+
+## Glimpse of a dataset
+```{r}
+data=read.csv("online_sales_dataset.csv")
+head(data, 5)
+```
+
+## Structure and Summary of Dataset
+```{r}
+str(data)
+```
+
+```{r}
+xkablesummary(data, title = "Summary of Dataset")
+```
+
+# Cleaning Dataset 
+
+## Looking For Null Values
+```{r}
+colSums(is.na(data))
+```
+
+## Removing Null Values
+```{r}
+data_clean<- na.omit(data)
+```
+
+```{r}
+colSums(is.na(data_clean))
+```
+
+```{r}
+dim(data_clean)
+```
+
+## Random Sample
+```{r}
+set.seed(123) 
+data_reduced <- data_clean %>% sample_n(10000)
+```
+
+```{r}
+nrow(data_reduced)
+```
+
+```{r}
+dim(data_reduced)
+```
+
+# Outliers
+
+```{r}
+# Boxplot for Quantity to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = Quantity)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Quantity", y = "Quantity") +
+    theme_minimal()
+```
+
+```{r}
+# Boxplot for UnitPrice to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = UnitPrice)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of UnitPrice", y = "Unit Price") +
+    theme_minimal()
+```
+
+```{r}
+# Boxplot for Discount to visualize outliers
+
+ggplot(data_reduced, aes(x = "", y = Discount)) +
+    geom_boxplot(fill = "lightblue", color = "darkblue") +
+    labs(title = "Boxplot of Discount", y = "Discount") +
+    theme_minimal()
+```
+## Detecting 
+```{r}
+kd2_outliers <- function(column) {
+  density <- density(column, na.rm = TRUE)
+  threshold <- 0.01  # Define a threshold for low-density regions
+  outlier_indices <- which(density(column)$y < threshold)
+  return(length(outlier_indices))  # Return the count of outliers
+}
+
+outliers_quantity <- kd2_outliers(data_reduced$Quantity)
+outliers_unit_price <- kd2_outliers(data_reduced$UnitPrice)
+outliers_discount <- kd2_outliers(data_reduced$Discount)
+
+cat("Outliers in Quantity:", outliers_quantity, "\n")
+cat("Outliers in Unit Price:", outliers_unit_price, "\n")
+cat("Outliers in Discount:", outliers_discount, "\n")
+```
+## Removing 
+```{r}
+remove_kd2_outliers <- function(df, column) {
+  density <- density(df[[column]], na.rm = TRUE)
+  threshold <- 0.01  # Define a threshold for low-density regions
+  outlier_indices <- which(density$y < threshold)
+  if (length(outlier_indices) > 0) {
+    df <- df[-outlier_indices, ]
+  }
+  return(df)
+}
+
+cleaned_data <- data_reduced %>%
+  remove_kd2_outliers("Quantity") %>%
+  remove_kd2_outliers("UnitPrice") %>%
+  remove_kd2_outliers("Discount")
+```
+
+Peak into the cleaned dataset after removing outliers
+```{r}
+str(cleaned_data)
+```
+
+```{r}
+xkablesummary(cleaned_data)
+```
+Converting variables into factors
+```{r}
+cleaned_data$InvoiceDate <- as.Date(cleaned_data$InvoiceDate, format = "%d-%m-%Y")
+cleaned_data$Description = as.factor(cleaned_data$Description)
+cleaned_data$StockCode = as.factor(cleaned_data$StockCode)
+cleaned_data$Country = as.factor(cleaned_data$Country)
+cleaned_data$PaymentMethod = as.factor(cleaned_data$PaymentMethod)
+cleaned_data$Category = as.factor(cleaned_data$Category)
+cleaned_data$ReturnStatus = as.factor(cleaned_data$ReturnStatus)
+cleaned_data$SalesChannel = as.factor(cleaned_data$SalesChannel)
+cleaned_data$ShipmentProvider = as.factor(cleaned_data$ShipmentProvider)
+cleaned_data$OrderPriority = as.factor(cleaned_data$OrderPriority)
+cleaned_data$WarehouseLocation = as.factor(cleaned_data$WarehouseLocation)
+```
+
+```{r}
+str(cleaned_data)
+```
+
+# Vizualisation
+
+```{r}
+sales_by_country <- cleaned_data %>%
+  group_by(Country) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
+
+ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(
+    title = "Total Sales by Country",
+    x = "Country",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+return_status_counts <- cleaned_data %>%
+  group_by(ReturnStatus) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = (Count / sum(Count)) * 100)  
+
+ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +  
+  labs(
+    title = "Proportion of Return Statuses",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+top_products <- cleaned_data %>%
+  group_by(Description) %>%  
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE)) %>%  
+  arrange(desc(TotalSales)) %>%  
+  slice(1:10)  
+
+ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  
+  labs(
+    title = "Top 10 Products by Total Sales",
+    x = "Product Description",
+    y = "Total Sales"
+  ) +
+  theme_minimal()
+```
+```{r}
+cleaned_data <- cleaned_data %>%
+  mutate(Year = format(InvoiceDate, "%Y")) 
+
+category_sales_yearly <- cleaned_data %>%
+  group_by(Year, Category) %>%
+  summarise(
+    TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE), 
+    .groups = "drop"
+  )
+
+category_sales_yearly$Year <- factor(category_sales_yearly$Year, levels = unique(category_sales_yearly$Year))
+
+ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Stacked Sales by Category Over Time (Yearly)",
+    x = "Year",
+    y = "Total Sales",
+    fill = "Category"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+sales_by_payment <- cleaned_data %>%
+  group_by(PaymentMethod) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
+
+ggplot(sales_by_payment, aes(x = TotalSales, y = reorder(PaymentMethod, TotalSales))) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  coord_flip() +
+  labs(
+    title = "Total Sales by Payment Method",
+    x = "Payment Method",
+    y = "Total Sales"
+  ) +
+  scale_x_continuous(labels = comma) +
+  theme_minimal()
+```
+
+```{r}
+top_products <- cleaned_data %>%
+  group_by(Description) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE)) %>%
+  arrange(desc(TotalSales)) %>%
+  slice_head(n = 10)
+
+top_products <- top_products %>%
+  mutate(Percentage = TotalSales / sum(TotalSales) * 100) 
+
+pie <- ggplot(top_products, aes(x = "", y = TotalSales, fill = Description)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(
+    aes(label = paste0(round(Percentage, 1), "%")), 
+    position = position_stack(vjust = 0.5) 
+  ) +
+  labs(
+    title = "Top 10 Products by Total Sales",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() + 
+  theme(
+    legend.title = element_blank(), 
+    plot.title = element_text(hjust = 0.5) 
+  )
+
+pie
+```
+
+```{r}
+sales_by_priority <- cleaned_data %>%
+  group_by(OrderPriority) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
+
+ggplot(sales_by_priority, aes(x = TotalSales, y = reorder(OrderPriority, TotalSales))) +
+  geom_bar(stat = "identity", fill = "orange") +
+  coord_flip() +
+  labs(
+    title = "Sales Distribution by Order Priority",
+    x = "Order Priority",
+    y = "Total Sales"
+  ) +
+   scale_x_continuous(labels = comma) +
+  theme_minimal()
+```
+
+
+```{r}
+sales_by_category_return <- cleaned_data %>%
+  group_by(Category, ReturnStatus) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
+
+ggplot(sales_by_category_return, aes(x = Category, y = TotalSales, fill = ReturnStatus)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Total Sales by Category and Return Status",
+    x = "Category",
+    y = "Total Sales",
+    fill = "Return Status"
+  ) +
+  scale_y_continuous(labels = comma) +
+  theme_minimal()
+```
+
+# Hypothesis Testing
+
+## Customer Segmentation
+
+**Null Hypothesis (H₀)**: There is no significant association between the mode of payment and customer segmentation based on purchase frequency.
+
+**Alternative Hypothesis (H₁)**: There is a significant association between the mode of payment and customer segmentation based on purchase frequency.
+
+**Mode of Test:** Chi-square test for independence
+
+```{r}
+unique(cleaned_data$PaymentMethod)
+```
+
+```{r}
+payment_segregation <- table(cleaned_data$PaymentMethod, cleaned_data$Category)
+chisq_test <- chisq.test(payment_segregation)
+print(chisq_test)
+```
+The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant association between mode of payment and customer segmentation based on purchase frequency. Based on the result we do not have enough evidence to say that there is an association between the 2 parameters.
+
+## Product Demand Hypothesis
+
+**Null Hypothesis (H₀)**: Discounts have no significant impact on the average quantity purchased.
+
+**Alternative Hypothesis (H₁)**: Discounts have a significant impact on the average quantity purchased.
+
+**Mode of Test:** Independent samples t-test
+
+```{r}
+t_test <- t.test(Quantity ~ Discount > 0.1, data = cleaned_data)  
+print(t_test)
+```
+The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that discount has no significant impact on average quantity purchased. The confidence interval further indicates that there's no strong evidence for a significant difference in the average quantity purchased with and without a discount.
+
+## Logistics Optimization Hypothesis
+
+**Null Hypothesis (H₀)**: The average shipping cost does not vary significantly between shipment providers.
+
+**Alternative Hypothesis (H₁)**: The average shipping cost varies significantly between shipment providers.
+
+**Mode of Test:** One-way ANOVA
+
+```{r}
+anova <- aov(ShippingCost ~ ShipmentProvider, data = data_reduced)
+summary(anova)
+```
+The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant difference in the average shipping costs between the different shipment providers. And the low F-value is also suggesting that the variation between shipment providers is small compared to the variation within them. In conclusion, the type of shipment provider doesn’t have a strong impact on the cost of shipping.
+
+## Sales Channel Hypothesis:
+
+**Null Hypothesis (H₀)**: There is no significant difference in sales volume between online and in-store channels.
+
+**Alternative Hypothesis (H₁)**: Sales volume differs significantly between online and in-store channels.
+
+**Mode of Test:** Independent samples t-test
+
+```{r}
+t_test2 <- t.test(Quantity ~ SalesChannel, data = data_reduced)
+print(t_test2)
+```
+The **p-value** is **greater** than **0.05**, which means we **fail to reject null hypothesis** and this suggests that there is a statistically no significant difference in sales volume between online and in-store channels. The confidence interval is further supporting the conclusion that there is no significant difference in sales volume between the two channels.
+
+## Return Patterns Hypothesis:
+
+**Null Hypothesis (H₀)**: Return rates are not significantly higher for any particular product category.
+
+**Alternative Hypothesis (H₁)**: Return rates are significantly higher for certain product categories.
+
+**Mode of Test:** Chi-square test for independence
+
+```{r}
+return_category <- table(data_reduced$ReturnStatus, data_reduced$Category)
+chisq_test2 <- chisq.test(return_category)
+print(chisq_test2)
+```
+The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant difference in return rates between the product categories. Based on the result we do not have enough evidence to say that there is an association between the 2 parameters.
+
+
