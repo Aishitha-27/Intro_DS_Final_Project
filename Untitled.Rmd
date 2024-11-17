@@ -140,74 +140,108 @@ names(cleaned_data)
 
 ```
 ```{r}
-# Summarize total sales by country
-sales_by_country <- cleaned_data %>%
-  group_by(Country) %>%
-  summarise(Sales = sum(Sales, na.rm = TRUE))
+
+
+str(cleaned_data)
+head(cleaned_data)
+
+
+
 ```
 ```{r}
-#VISUALIZATION
-# Total Sales by Country
+names(data_reduced)
+```
+```{r}
+# Summarize Total Sales by Country
 sales_by_country <- cleaned_data %>%
   group_by(Country) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+  summarise(TotalSales = sum(Quantity * UnitPrice * (1 - Discount), na.rm = TRUE), .groups = "drop")
 
-ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  coord_flip() +
+# Plot Total Sales by Country
+ggplot(data = sales_by_country, aes(x = reorder(Country, -TotalSales), y = TotalSales)) +
+  geom_col(fill = "dodgerblue", width = 0.7) +
   labs(
     title = "Total Sales by Country",
     x = "Country",
     y = "Total Sales"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+
 ```
 ```{r}
-# Proportion of Return Statuses
-return_status_counts <- cleaned_data %>%
-  group_by(ReturnStatus) %>%
-  summarise(Count = n()) %>%
-  mutate(Percentage = (Count / sum(Count)) * 100)  # Calculate the percentage
+# Summarize Quantity Sold by Category
+quantity_by_category <- cleaned_data %>%
+  group_by(Category) %>%
+  summarise(TotalQuantity = sum(Quantity, na.rm = TRUE), .groups = "drop")
 
-# Plot with percentages
-ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start = 0) +
-  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +  # Add percentage labels
+# Plot Quantity by Category
+ggplot(data = quantity_by_category, aes(x = reorder(Category, TotalQuantity), y = TotalQuantity)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  coord_flip() +
   labs(
-    title = "Proportion of Return Statuses",
-    x = NULL,
-    y = NULL
+    title = "Quantity Sold by Category",
+    x = "Category",
+    y = "Total Quantity"
   ) +
-  theme_void() +
-  theme(legend.title = element_blank())
+  theme_minimal()
+
 ```
 
 ```{r}
 str(cleaned_data)
 ```
 ```{r}
+# Summarize Quantity by Country and Category
+quantity_country_category <- cleaned_data %>%
+  group_by(Country, Category) %>%
+  summarise(TotalQuantity = sum(Quantity, na.rm = TRUE), .groups = "drop")
+
+# Plot Stacked Bar Chart
+ggplot(data = quantity_country_category, aes(x = Country, y = TotalQuantity, fill = Category)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Quantity Sold by Country and Category",
+    x = "Country",
+    y = "Total Quantity"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r}
 library(dplyr)
 library(ggplot2)
 ```
 ```{r}
-# Summarize total sales by product description
-top_products <- cleaned_data %>%
-  group_by(Description) %>%  # Use 'Description' as it matches your dataset
-  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%  # Sum of 'Sales'
-  arrange(desc(TotalSales)) %>%  # Arrange by descending total sales
-  slice(1:10)  # Select the top 10 products
+# Count Payment Methods and Calculate Percentages
+payment_methods <- cleaned_data %>%
+  group_by(PaymentMethod) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  mutate(Percentage = round(100 * Count / sum(Count), 1))
 
-# Plotting top 10 products by total sales
-ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +  # Flip coordinates for better readability
+# Plot Payment Method Distribution with Percentages
+ggplot(data = payment_methods, aes(x = "", y = Count, fill = PaymentMethod)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(Percentage, "%")), 
+            position = position_stack(vjust = 0.5), 
+            size = 4, 
+            color = "white") +
   labs(
-    title = "Top 10 Products by Total Sales",
-    x = "Product Description",
-    y = "Total Sales"
+    title = "Distribution of Payment Methods",
+    x = "",
+    y = ""
   ) +
-  theme_minimal()
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
 
 ```
 ```{r}
@@ -224,60 +258,12 @@ names(cleaned_data)
 library(lubridate)
 ```
 ```{r}
-cleaned_data <- cleaned_data %>%
-  mutate(InvoiceDate = as.POSIXct(InvoiceDate, format = "%Y-%m-%d %H:%M"))
 
-# Create YearMonth column
-cleaned_data <- cleaned_data %>%
-  mutate(YearMonth = format(InvoiceDate, "%Y-%m"))
 
-# Stacked Sales by Category Over Time
-category_sales <- cleaned_data %>%
-  group_by(YearMonth, Category) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE), .groups = "drop")
-
-ggplot(category_sales, aes(x = YearMonth, y = TotalSales, fill = Category)) +
-  geom_bar(stat = "identity", position = "stack") +
-  labs(
-    title = "Stacked Sales by Category Over Time",
-    x = "Time (Year-Month)",
-    y = "Total Sales",
-    fill = "Category"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r}
-# Total Sales by Payment Method
-sales_by_payment <- cleaned_data %>%
-  group_by(PaymentMethod) %>%
-  summarise(TotalSales = sum(Sales, na.rm = TRUE))
 
-ggplot(sales_by_payment, aes(x = reorder(PaymentMethod, TotalSales), y = TotalSales)) +
-  geom_bar(stat = "identity", fill = "darkgreen") +
-  coord_flip() +
-  labs(
-    title = "Total Sales by Payment Method",
-    x = "Payment Method",
-    y = "Total Sales"
-  ) +
-  theme_minimal()
-```
 ```{r}
-# Pie chart of top-selling products
-top_products_pie <- top_products %>%
-  ggplot(aes(x = "", y = TotalSales, fill = Description)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start = 0) +
-  labs(
-    title = "Top 10 Products by Total Sales",
-    x = NULL,
-    y = NULL
-  ) +
-  theme_void() +
-  theme(legend.title = element_blank())
-# Display the plot
-top_products_pie
+
 
 ```
 
@@ -333,6 +319,39 @@ ggplot(sales_by_category_return, aes(x = Category, y = TotalSales, fill = Return
   ) +
   theme_minimal()
 ```
+```{r}
+# Calculate total sales by return status
+sales_by_return_status <- cleaned_data %>%
+  group_by(ReturnStatus) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE)) %>%
+  mutate(Percentage = TotalSales / sum(TotalSales) * 100)
 
+# Create the bar plot with percentages
+ggplot(sales_by_return_status, aes(x = ReturnStatus, y = TotalSales, fill = ReturnStatus)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5, color = "black") +  # Add percentage labels
+  labs(title = "Sales by Return Status", x = "Return Status", y = "Total Sales") +
+  theme_minimal()
+
+```
+```{r}
+ggplot(cleaned_data, aes(x = Discount, y = Sales)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Discount vs Sales", x = "Discount", y = "Sales") +
+  theme_minimal()
+```
+```{r}
+sales_by_shipment_provider <- cleaned_data %>%
+  group_by(ShipmentProvider) %>%
+  summarise(TotalSales = sum(Sales, na.rm = TRUE))
+
+ggplot(sales_by_shipment_provider, aes(x = reorder(ShipmentProvider, TotalSales), y = TotalSales, fill = ShipmentProvider)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Sales by Shipment Provider", x = "Shipment Provider", y = "Total Sales") +
+  theme_minimal()
+
+```
 
 
