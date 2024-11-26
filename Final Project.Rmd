@@ -490,13 +490,17 @@ summary(classification_tree)
 ```{r}
 fancyRpartPlot(classification_tree)
 ```
-The model begins by predicting the **Medium** class at the **root node**, with **6397 observations** in total. The first split in the tree occurs based on the variable **total_quantity**, with observations where total_quantity < 8.5 being classified as Low in the left branch (Node 2), and the right branch (Node 3) continuing with a Medium prediction for customers with higher purchase quantities.
+The model begins by predicting the **Medium** class at the **root node**, with **6397 observations** in total. The first split occurs based on the variable total_quantity, which is identified as the most significant predictor. Observations where total_quantity < 8.5 are directed to Node 2, while those with total_quantity >= 8.5 are directed to Node 3.
 
-At Node 2, the model confidently predicts a majority of customers under Low segment, indicating that those with lower purchase quantities are most likely classified in this segment. On the other hand, Node 3, where total_quantity >= 8.5, continues with the Medium segment and splits further. The second split at Node 3 distinguishes between Medium and High segment customers based on total_quantity >= 28, with another split at Node 6 predicting High and Medium segments.
+At **Node 2**, there are **1,002 observations**, and the model confidently predicts a majority of customers under Low segment, indicating that those with lower purchase quantities are most likely classified in this segment. On the other hand, **Node 3**, containing **5,377 observations**, continues to predict the Medium segment as the majority class. 
 
-At Node 6, the model achieves 100% accuracy in predicting High segment customers, indicating those with very high purchase quantities are precisely classified in this segment. Meanwhile, at Node 7, the model assigns the Medium segment.
+A subsequent split occurs at total_quantity >= 27.5, further refining the classification into Node 6 and Node 7. **Node 6** includes **2,910 observations**, with a higher likelihood of customers being classified as High, indicating that moderate purchase quantities begin to influence the prediction towards high-value segments.
 
-Overall, the model's accuracy varies by segment. The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers. 
+At Node 6, the model makes another split at total_quantity >= 60.5, dividing customers further into Node 12 and Node 13. **Node 12** contains **117 observations** and achieves near-perfect accuracy, with 92.3% of customers being classified as High, reflecting that customers with extremely high purchase quantities are almost in this segment. Meanwhile, **Node 13**, with **2,793 observations**, also predicts High.
+
+Finally, **Node 7**, containing **2,467 observations**, predicts the Medium segment with high confidence. At this node, 72.7% of customers are classified as Medium. Additional splits within **Node 13** further fine-tune the prediction for High and Medium segments based on thresholds like total_quantity >= 38.5.
+
+Overall, the model's accuracy varies by segment. The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
 
 Evaluation
 
