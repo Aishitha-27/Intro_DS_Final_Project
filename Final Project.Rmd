@@ -19,17 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r basic_libraries, include=FALSE}
-library(ezids)
-library(ggplot2)
-library(dplyr)
-library(tidyverse)
-library(outliers)
-library(reshape2) 
-library(lubridate)
-library(scales)
-library(rpart)
-library(rpart.plot)
-library(rattle)
+
 ```
 
 # Introduction
@@ -505,7 +495,7 @@ Overall, the model's accuracy varies by segment. The model performs best for **H
 Evaluation
 
 ```{r}
-
+str(cleaned_data)
 ```
 
 ## SMART QUESTION 2
@@ -513,6 +503,67 @@ Evaluation
 **What factors drive product demand, and how can we predict the quantity sold based on discounts, order priority, and customer demographics?** 
 
 We build **Linear regression** model since we are analyzing relationships between predictors (e.g., discounts, order priority) and the target (quantity sold). The focus of our SMART question is inference.
+
+```{r}
+
+demand_data <- cleaned_data %>%
+  group_by(StockCode, OrderPriority, CustomerID) %>%
+  summarise(
+    avg_discount = mean(Discount, na.rm = TRUE),
+    total_quantity_sold = sum(Quantity, na.rm = TRUE),
+    total_sales = sum(UnitPrice * Quantity, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+demand_data <- demand_data %>%
+  left_join(cleaned_data %>%
+              select(CustomerID, Country, PaymentMethod) %>%
+              distinct(),
+            by = "CustomerID")
+
+
+demand_data$OrderPriority <- as.factor(demand_data$OrderPriority)
+demand_data$Country <- as.factor(demand_data$Country)
+demand_data$PaymentMethod <- as.factor(demand_data$PaymentMethod)
+
+
+set.seed(123)
+train_indices <- sample(1:nrow(demand_data), 0.7 * nrow(demand_data))
+train_data <- demand_data[train_indices, ]
+test_data <- demand_data[-train_indices, ]
+
+
+lm_model <- lm(
+  total_quantity_sold ~ avg_discount + OrderPriority + Country + PaymentMethod,
+  data = train_data
+)
+
+
+summary(lm_model)
+
+
+predictions <- predict(lm_model, test_data)
+
+test_data$predicted_quantity <- predictions
+comparison <- data.frame(
+  Actual = test_data$total_quantity_sold,
+  Predicted = test_data$predicted_quantity
+)
+
+head(comparison, 10)
+
+
+ggplot(comparison, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(
+    title = "Predicted vs Actual Quantities Sold",
+    x = "Actual Quantity Sold",
+    y = "Predicted Quantity Sold"
+  ) +
+  theme_minimal()
+```
 
 ## SMART QUESTION 3
 
@@ -553,6 +604,57 @@ We build **Logistic Regression** model because we want to find a binary outcome.
 
 ```{r}
 
+logistic_data <- cleaned_data %>%
+  mutate(
+    SalesChannelBinary = ifelse(SalesChannel == "Online", 1, 0)  # Encode SalesChannel as binary
+  ) %>%
+  select(
+    SalesChannelBinary, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod
+  )
+
+
+logistic_data$OrderPriority <- as.factor(logistic_data$OrderPriority)
+logistic_data$Country <- as.factor(logistic_data$Country)
+logistic_data$PaymentMethod <- as.factor(logistic_data$PaymentMethod)
+
+
+set.seed(123)
+train_indices <- sample(1:nrow(logistic_data), 0.7 * nrow(logistic_data))
+train_data <- logistic_data[train_indices, ]
+test_data <- logistic_data[-train_indices, ]
+
+
+logistic_model <- glm(
+  SalesChannelBinary ~ Quantity + UnitPrice + Discount + OrderPriority + Country + PaymentMethod,
+  data = train_data,
+  family = "binomial"
+)
+
+
+summary(logistic_model)
+
+
+test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
+test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  # Threshold at 0.5
+
+
+confusion_matrix <- table(
+  Actual = test_data$SalesChannelBinary,
+  Predicted = test_data$PredictedClass
+)
+
+print(confusion_matrix)
+
+
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Model Accuracy:", accuracy, "\n")
+
+
+library(pROC)
+roc_curve <- roc(test_data$SalesChannelBinary, test_data$PredictedProbability)
+plot(roc_curve, main = "ROC Curve for Sales Channel Classification")
+auc <- auc(roc_curve)
+cat("Area Under the Curve (AUC):", auc, "\n")
 
 ```
 
@@ -564,5 +666,73 @@ We build **Logistic Regression** model because we want to find binary outcome. T
 
 ```{r}
 
+returns_data <- cleaned_data %>%
+  mutate(
+    ReturnBinary = ifelse(ReturnStatus == "Returned", 1, 0)  # Encode ReturnStatus as binary
+  ) %>%
+  group_by(StockCode, CustomerID) %>%
+  summarise(
+    ReturnBinary = max(ReturnBinary, na.rm = TRUE),  # Binary target
+    avg_discount = mean(Discount, na.rm = TRUE),    # Average discount
+    product_type = as.character(names(sort(table(Category), decreasing = TRUE)[1])), # Most common product type
+    total_spend = sum(UnitPrice * Quantity, na.rm = TRUE) # Total spend by customer
+  ) %>%
+  ungroup()
+
+
+spend_summary <- summary(returns_data$total_spend)
+low_threshold <- spend_summary["1st Qu."]
+high_threshold <- spend_summary["3rd Qu."]
+
+returns_data <- returns_data %>%
+  mutate(
+    customer_segment = case_when(
+      total_spend < low_threshold ~ "Low",
+      total_spend >= low_threshold & total_spend < high_threshold ~ "Medium",
+      total_spend >= high_threshold ~ "High"
+    )
+  )
+
+
+returns_data$product_type <- as.factor(returns_data$product_type)
+returns_data$customer_segment <- as.factor(returns_data$customer_segment)
+
+
+set.seed(123)
+train_indices <- sample(1:nrow(returns_data), 0.7 * nrow(returns_data))
+train_data <- returns_data[train_indices, ]
+test_data <- returns_data[-train_indices, ]
+
+
+logistic_model <- glm(
+  ReturnBinary ~ avg_discount + product_type + customer_segment,
+  data = train_data,
+  family = "binomial"
+)
+
+
+summary(logistic_model)
+
+
+test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
+test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  # Threshold at 0.5
+
+
+confusion_matrix <- table(
+  Actual = test_data$ReturnBinary,
+  Predicted = test_data$PredictedClass
+)
+
+print(confusion_matrix)
+
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Model Accuracy:", accuracy, "\n")
+
+
+library(pROC)
+roc_curve <- roc(test_data$ReturnBinary, test_data$PredictedProbability)
+plot(roc_curve, main = "ROC Curve for Product Returns Classification")
+auc <- auc(roc_curve)
+cat("Area Under the Curve (AUC):", auc, "\n")
 
 ```
