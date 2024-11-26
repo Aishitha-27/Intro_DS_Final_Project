@@ -27,6 +27,9 @@ library(outliers)
 library(reshape2) 
 library(lubridate)
 library(scales)
+library(rpart)
+library(rpart.plot)
+library(rattle)
 ```
 
 # Introduction
@@ -341,7 +344,7 @@ ggplot(sales_by_category_return, aes(x = Category, y = TotalSales, fill = Return
 
 # Hypothesis Testing
 
-## Customer Segmentation
+## Hypothsis 1
 
 **Null Hypothesis (H₀)**: There is no significant association between the mode of payment and customer segmentation based on purchase frequency.
 
@@ -360,7 +363,7 @@ print(chisq_test)
 ```
 The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant association between mode of payment and customer segmentation based on purchase frequency. Based on the result we do not have enough evidence to say that there is an association between the 2 parameters.
 
-## Product Demand Hypothesis
+## Hypothesis 2
 
 **Null Hypothesis (H₀)**: Discounts have no significant impact on the average quantity purchased.
 
@@ -374,7 +377,7 @@ print(t_test)
 ```
 The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that discount has no significant impact on average quantity purchased. The confidence interval further indicates that there's no strong evidence for a significant difference in the average quantity purchased with and without a discount.
 
-## Logistics Optimization Hypothesis
+## Hypothesis 3
 
 **Null Hypothesis (H₀)**: The average shipping cost does not vary significantly between shipment providers.
 
@@ -383,12 +386,12 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 **Mode of Test:** One-way ANOVA
 
 ```{r}
-anova <- aov(ShippingCost ~ ShipmentProvider, data = data_reduced)
+anova <- aov(ShippingCost ~ ShipmentProvider, data = cleaned_data)
 summary(anova)
 ```
 The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant difference in the average shipping costs between the different shipment providers. And the low F-value is also suggesting that the variation between shipment providers is small compared to the variation within them. In conclusion, the type of shipment provider doesn’t have a strong impact on the cost of shipping.
 
-## Sales Channel Hypothesis:
+## Hypothesis 4
 
 **Null Hypothesis (H₀)**: There is no significant difference in sales volume between online and in-store channels.
 
@@ -397,12 +400,12 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 **Mode of Test:** Independent samples t-test
 
 ```{r}
-t_test2 <- t.test(Quantity ~ SalesChannel, data = data_reduced)
+t_test2 <- t.test(Quantity ~ SalesChannel, data = cleaned_data)
 print(t_test2)
 ```
 The **p-value** is **greater** than **0.05**, which means we **fail to reject null hypothesis** and this suggests that there is a statistically no significant difference in sales volume between online and in-store channels. The confidence interval is further supporting the conclusion that there is no significant difference in sales volume between the two channels.
 
-## Return Patterns Hypothesis:
+## Hypothesis 5
 
 **Null Hypothesis (H₀)**: Return rates are not significantly higher for any particular product category.
 
@@ -411,10 +414,151 @@ The **p-value** is **greater** than **0.05**, which means we **fail to reject nu
 **Mode of Test:** Chi-square test for independence
 
 ```{r}
-return_category <- table(data_reduced$ReturnStatus, data_reduced$Category)
+return_category <- table(cleaned_data$ReturnStatus, cleaned_data$Category)
 chisq_test2 <- chisq.test(return_category)
 print(chisq_test2)
 ```
 The **p-value** is **greater** than **0.05**, hence we **fail to reject the null hypothesis** and this suggests that there is no significant difference in return rates between the product categories. Based on the result we do not have enough evidence to say that there is an association between the 2 parameters.
 
+## Note
 
+**Failing to reject the null hypothesis doesn't mean the null hypothesis is true—it just means you don’t have enough evidence to reject it.**
+
+# Models
+
+## SMART QUESTION 1
+
+**Can we classify customers into segments (e.g., Low, Medium, High value) based on purchase frequency, product preferences, and payment methods?**
+
+We build **Classification Tree** model to classify customers into predefined segments based on predictors like purchase frequency, product preferences, and payment methods. The focus of our SMART question is on prediction.
+ 
+We start to aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility.
+
+```{r}
+customer_data <- cleaned_data %>%
+  group_by(CustomerID) %>%
+  summarize(
+    purchase_frequency = n_distinct(InvoiceNo),
+    total_quantity = sum(Quantity, na.rm = TRUE),
+    total_spend = sum(UnitPrice * Quantity, na.rm = TRUE),
+    avg_discount = mean(Discount, na.rm = TRUE),
+    preferred_payment = as.character(names(sort(table(PaymentMethod), decreasing = TRUE)[1])),
+    preferred_category = as.character(names(sort(table(Category), decreasing = TRUE)[1]))
+  )
+
+spend_summary <- summary(customer_data$total_spend)
+low_threshold <- spend_summary["1st Qu."] 
+high_threshold <- spend_summary["3rd Qu."] 
+
+customer_data <- customer_data %>%
+  mutate(
+    customer_segment = case_when(
+      total_spend < low_threshold ~ "Low",
+      total_spend >= low_threshold & total_spend < high_threshold ~ "Medium",
+      total_spend >= high_threshold ~ "High"
+    )
+  )
+
+customer_data$preferred_payment <-  as.factor(customer_data$preferred_payment)
+
+customer_data$preferred_category <- as.factor(customer_data$preferred_category)
+
+
+customer_data$preferred_payment <- as.numeric(customer_data$preferred_payment)
+
+customer_data$preferred_category <- as.numeric(customer_data$preferred_category)
+```
+
+We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
+```{r}
+set.seed(123)
+train_indices <- sample(1:nrow(customer_data), 0.7 * nrow(customer_data))
+train_data <- customer_data[train_indices, ]
+test_data <- customer_data[-train_indices, ]
+
+
+classification_tree <- rpart(
+  customer_segment ~ purchase_frequency + total_quantity + avg_discount + preferred_payment + preferred_category,
+  data = train_data,
+  method = "class"
+)
+```
+
+```{r}
+summary(classification_tree) 
+```
+```{r}
+fancyRpartPlot(classification_tree)
+```
+The model begins by predicting the **Medium** class at the **root node**, with **6397 observations** in total. The first split in the tree occurs based on the variable **total_quantity**, with observations where total_quantity < 8.5 being classified as Low in the left branch (Node 2), and the right branch (Node 3) continuing with a Medium prediction for customers with higher purchase quantities.
+
+At Node 2, the model confidently predicts a majority of customers under Low segment, indicating that those with lower purchase quantities are most likely classified in this segment. On the other hand, Node 3, where total_quantity >= 8.5, continues with the Medium segment and splits further. The second split at Node 3 distinguishes between Medium and High segment customers based on total_quantity >= 28, with another split at Node 6 predicting High and Medium segments.
+
+At Node 6, the model achieves 100% accuracy in predicting High segment customers, indicating those with very high purchase quantities are precisely classified in this segment. Meanwhile, at Node 7, the model assigns the Medium segment.
+
+Overall, the model's accuracy varies by segment. The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers. 
+
+Evaluation
+
+```{r}
+
+```
+
+## SMART QUESTION 2
+
+**What factors drive product demand, and how can we predict the quantity sold based on discounts, order priority, and customer demographics?** 
+
+We build **Linear regression** model since we are analyzing relationships between predictors (e.g., discounts, order priority) and the target (quantity sold). The focus of our SMART question is inference.
+
+## SMART QUESTION 3
+
+**How do shipment providers, warehouse locations, and order priority influence shipping costs, and how can we predict cost efficiency?**
+
+We build **Linear Regression** model because we want to quantify the relationship between shipping cost based on ShipmentProvider, WarehouseLocation and OrderPriority. The focus of our SMART question is on inference as well as prediction.
+
+We create a df with only relevant columns and then convert the categorical variables to factor.
+
+```{r}
+logistics_data <- cleaned_data %>%
+  select(ShippingCost, ShipmentProvider, WarehouseLocation, OrderPriority) %>%
+  filter(!is.na(ShippingCost))  
+
+logistics_data$ShipmentProvider <- as.factor(logistics_data$ShipmentProvider)
+logistics_data$WarehouseLocation <- as.factor(logistics_data$WarehouseLocation)
+logistics_data$OrderPriority <- as.factor(logistics_data$OrderPriority)
+```
+
+We apply the Linear Regression Model.
+```{r}
+lm_model <- lm(ShippingCost ~ ShipmentProvider + WarehouseLocation + OrderPriority, data = logistics_data)
+
+summary(lm_model)
+```
+
+Evaluation
+```{r}
+
+
+```
+
+## SMART QUESTION 4
+
+**What factors influence whether a sale occurs online or in-store, and how can we classify sales channel based on customer and order characteristics?**
+
+We build **Logistic Regression** model because we want to find a binary outcome. The focus of our SMART question is prediction.
+
+```{r}
+
+
+```
+
+## SMART QUESTION 5
+
+**How can we predict product returns pattern based on product type, discount status, and customer segment, and what factors influence return rates ?**
+
+We build **Logistic Regression** model because we want to find binary outcome. The focus of our SMART question is inference.
+
+```{r}
+
+
+```
