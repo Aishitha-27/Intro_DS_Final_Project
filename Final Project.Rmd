@@ -64,7 +64,9 @@ colSums(is.na(data_clean))
 ```{r}
 dim(data_clean)
 ```
-
+```{r}
+library(dplyr)
+```
 ## Random Sample
 ```{r}
 set.seed(123) 
@@ -146,7 +148,9 @@ Peak into the cleaned dataset after removing outliers
 ```{r}
 str(cleaned_data)
 ```
-
+```{R}
+library(ezids)
+```
 ```{r}
 xkablesummary(cleaned_data)
 ```
@@ -222,6 +226,12 @@ ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) 
     y = "Total Sales"
   ) +
   theme_minimal()
+```
+```{r}
+library(scales)             # Load the package
+```
+```{r}
+library(magrittr)
 ```
 ```{r}
 cleaned_data <- cleaned_data %>%
@@ -425,6 +435,9 @@ We build **Classification Tree** model to classify customers into predefined seg
 We start to aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility.
 
 ```{r}
+library(dplyr)
+```
+```{r}
 customer_data <- cleaned_data %>%
   group_by(CustomerID) %>%
   summarize(
@@ -459,7 +472,11 @@ customer_data$preferred_payment <- as.numeric(customer_data$preferred_payment)
 customer_data$preferred_category <- as.numeric(customer_data$preferred_category)
 ```
 
+
 We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
+```{r}
+library(rpart)
+```
 ```{r}
 set.seed(123)
 train_indices <- sample(1:nrow(customer_data), 0.7 * nrow(customer_data))
@@ -478,6 +495,9 @@ classification_tree <- rpart(
 summary(classification_tree) 
 ```
 ```{r}
+library(rattle)
+```
+```{r}
 fancyRpartPlot(classification_tree)
 ```
 The model begins by predicting the **Medium** class at the **root node**, with **6397 observations** in total. The first split occurs based on the variable total_quantity, which is identified as the most significant predictor. Observations where total_quantity < 8.5 are directed to Node 2, while those with total_quantity >= 8.5 are directed to Node 3.
@@ -492,11 +512,82 @@ Finally, **Node 7**, containing **2,467 observations**, predicts the Medium segm
 
 Overall, the model's accuracy varies by segment. The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
 
-Evaluation
+#Evaluation
 
 ```{r}
 str(cleaned_data)
 ```
+
+
+#MODEL EVALUATION- Confusion Matrix and Accuracy
+
+```{r}
+# Load necessary library
+library(caret)
+```
+```{r}
+test_predictions <- factor(test_predictions)
+test_data$customer_segment <- factor(test_data$customer_segment)
+```
+
+```{r}
+levels(test_predictions) <- levels(test_data$customer_segment)
+```
+
+```{r}
+# Predictions on test data
+test_predictions <- predict(classification_tree, test_data, type = "class")
+
+# Confusion Matrix
+conf_matrix <- confusionMatrix(test_predictions, test_data$customer_segment)
+
+# Print confusion matrix and overall accuracy
+print(conf_matrix)
+
+# Segment-wise accuracy
+accuracy_per_segment <- conf_matrix$byClass
+print(accuracy_per_segment)
+```
+# 10-Fold Cross-Validation
+```{r}
+set.seed(123)
+cv_results <- train(
+  customer_segment ~ purchase_frequency + total_quantity + avg_discount + preferred_payment + preferred_category,
+  data = train_data,
+  method = "rpart",
+  trControl = trainControl(method = "cv", number = 10)
+)
+
+# Print cross-validation results
+print(cv_results)
+```
+#AUC AND ROC CURVE
+```{r}
+# Ensure pROC library is loaded
+library(pROC)
+
+
+# Compute ROC curve
+roc_curve <- roc(
+  response = test_data$binary_segment,   # Binary outcome variable
+  predictor = probs,                     # Predicted probabilities
+  levels = c("0", "1"),                  # Explicitly define levels: control = 0, case = 1
+  direction = "<"                        # Controls < Cases (default)
+)
+
+# Plot the ROC Curve
+plot(roc_curve, main = "ROC Curve for High Segment")
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(paste("AUC:", auc_value))
+
+
+
+```
+
 
 ## SMART QUESTION 2
 
@@ -578,6 +669,55 @@ For test data, the predictions closely align with actual values. For example, cu
 
 Overall, the model effectively identifies the key factors influencing product demand. It performs best in scenarios where discounts and order priority play a prominent role, providing actionable insights for optimizing pricing strategies and operational efficiency. The alignment between predicted and actual values validates the model’s robustness in capturing the underlying patterns of product demand.
 
+#Check for multi-colinearity
+```{R}
+library(car)
+vif(lm_model)
+```
+None of these variables show problematic levels of multicollinearity, as all GVIF values are close to 1, indicating that the variables do not exhibit high correlations with each other.
+
+#Model Performance
+```{r}
+summary(comparison)
+```
+#EVALUATIOPN 
+```{R}
+library(Metrics)
+
+mae_value <- mae(test_data$total_quantity_sold, test_data$predicted_quantity)
+mse_value <- mse(test_data$total_quantity_sold, test_data$predicted_quantity)
+r2_value <- 1 - sum((test_data$total_quantity_sold - test_data$predicted_quantity)^2) / 
+                 sum((test_data$total_quantity_sold - mean(test_data$total_quantity_sold))^2)
+
+cat("MAE:", mae_value, "\nMSE:", mse_value, "\nR-squared:", r2_value, "\n")
+```
+#RESIDUAL ANALYSIS
+```{R}
+# Histogram
+hist(residuals, breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+# Q-Q Plot
+qqnorm(residuals)
+qqline(residuals, col = "red")
+
+```
+#Cross Validation
+```{r}
+library(caret)
+train_control <- trainControl(method = "cv", number = 10)
+cv_model <- train(total_quantity_sold ~ avg_discount + OrderPriority + Country + PaymentMethod, 
+                  data = demand_data, 
+                  method = "lm", 
+                  trControl = train_control)
+print(cv_model)
+```
+#Assessing the predictors
+
+```{r}
+lm_model_interaction <- lm(total_quantity_sold ~ avg_discount * OrderPriority + Country + PaymentMethod, data = train_data)
+summary(lm_model_interaction)
+```
+
 ## SMART QUESTION 3
 
 **How do shipment providers, warehouse locations, and order priority influence shipping costs, and how can we predict cost efficiency?**
@@ -603,10 +743,37 @@ lm_model <- lm(ShippingCost ~ ShipmentProvider + WarehouseLocation + OrderPriori
 summary(lm_model)
 ```
 
-Evaluation
+#Evaluation-Rediusal Analysis
 ```{r}
+# Residuals vs Fitted plot
+plot(lm_model$fitted.values, lm_model$residuals, 
+     main = "Residuals vs Fitted Values", 
+     xlab = "Fitted Values", 
+     ylab = "Residuals")
+abline(h = 0, col = "red")
+```
+#QQ Plot
+```{R}
+# Q-Q plot
+qqnorm(lm_model$residuals)
+qqline(lm_model$residuals, col = "red")
+```
+#Multicolinearity check
+```{r}
+vif(lm_model)
 
+```
+All the GVIF values and the adjusted GVIF^(1/(2*Df)) values are close to 1, indicating that there is no significant multicollinearity among the predictors in your model.
 
+#Cross Validation
+```{r}
+library(caret)
+train_control <- trainControl(method = "cv", number = 10)
+cv_model <- train(ShippingCost ~ ShipmentProvider + WarehouseLocation + OrderPriority, 
+                  data = logistics_data, 
+                  method = "lm", 
+                  trControl = train_control)
+print(cv_model)
 ```
 
 ## SMART QUESTION 4
@@ -650,6 +817,16 @@ logistic_model <- glm(
 summary(logistic_model)
 ```
 
+```{r}
+roc_curve <- roc(test_data$SalesChannelBinary, test_data$PredictedProbability)
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+
+
+auc_value <- auc(roc_curve)
+auc_value
+
+
+```
 We evaluated the model’s performance by calculating accuracy and generating an ROC curve, with the AUC demonstrating its ability to distinguish between online and in-store sales effectively. This step-by-step approach allowed us to uncover the key factors influencing sales channels, providing valuable insights for optimizing marketing strategies and operational planning.
 
 ```{r}
@@ -660,6 +837,34 @@ test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  
 The logistic regression model predicts whether a sale occurs online or in-store, using predictors such as quantity, unit price, discount, order priority, country, and payment method. Discounts were the most significant factor, strongly associated with online sales, while larger quantities were linked to in-store purchases. High-priority orders and flexible payment methods also leaned toward online sales, while geographical differences highlighted regional preferences for sales channels.
 
 Tested on 1,971 observations, the model achieved an accuracy of 85.4% and an AUC of 0.91, demonstrating strong performance in distinguishing between online and in-store sales. This model provides clear insights into customer behavior and purchasing patterns, enabling businesses to tailor strategies effectively.
+
+#EVALUATION
+```{r}
+# Ensure that both actual and predicted values are factors with the same levels
+test_data$SalesChannelBinary <- factor(test_data$SalesChannelBinary, levels = c(0, 1))
+test_data$PredictedClass <- factor(test_data$PredictedClass, levels = c(0, 1))
+library(caret)
+
+# Generate confusion matrix
+confusion_matrix <- confusionMatrix(test_data$PredictedClass, test_data$SalesChannelBinary)
+confusion_matrix
+```
+
+```{r}
+accuracy <- mean(test_data$PredictedClass == test_data$SalesChannelBinary)
+accuracy
+
+confusion_matrix <- confusionMatrix(factor(test_data$PredictedClass), factor(test_data$SalesChannelBinary))
+confusion_matrix
+
+precision <- confusion_matrix$byClass['Pos Pred Value']
+recall <- confusion_matrix$byClass['Sensitivity']
+f1_score <- 2 * (precision * recall) / (precision + recall)
+precision
+recall
+f1_score
+
+```
 
 ## SMART QUESTION 5
 
@@ -734,3 +939,44 @@ test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  
 The logistic regression model predicts whether a product will be returned, using predictors such as average discount, product type, and customer segment. Average discount emerged as a significant factor, with higher discounts associated with an increased likelihood of product returns. Product type also played a crucial role, with certain categories showing higher return rates, reflecting product-specific tendencies. Customer segments, particularly the high-spending segment, were less likely to return products, suggesting a stronger commitment to purchases among these customers.
 
 Tested on a dataset of 1,971 observations, the model achieved an accuracy of 82.7% and an AUC of 0.89, demonstrating strong performance in distinguishing between returned and non-returned products. This model provides valuable insights into return patterns, enabling businesses to better manage returns by optimizing discount strategies and tailoring approaches for different product types and customer segments.
+
+```{r}
+# Predict probabilities for product returns
+test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
+
+# Convert probabilities to binary predictions (1 = Returned, 0 = Not Returned)
+test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)
+```
+
+
+```{r}
+# Generate confusion matrix
+confusion_matrix <- confusionMatrix(as.factor(test_data$PredictedClass), as.factor(test_data$ReturnBinary))
+
+# Display confusion matrix
+confusion_matrix
+```
+
+```{r}
+# Calculate accuracy
+accuracy <- confusion_matrix$overall['Accuracy']
+accuracy
+# Extract Precision, Recall, and F1-Score from confusion matrix
+precision <- confusion_matrix$byClass['Precision']
+recall <- confusion_matrix$byClass['Recall']
+f1_score <- confusion_matrix$byClass['F1']
+
+precision
+recall
+f1_score
+```
+```{r}
+library(pROC)
+
+roc_curve <- roc(test_data$ReturnBinary, test_data$PredictedProbability)
+plot(roc_curve, main = "ROC Curve")
+auc_value <- auc(roc_curve)
+
+```
+
+
