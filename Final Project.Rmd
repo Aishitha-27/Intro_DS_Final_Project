@@ -186,10 +186,6 @@ str(cleaned_data)
 # Vizualisation
 
 ```{r}
-sales_by_country <- cleaned_data %>%
-  group_by(Country) %>%
-  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
-
 ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   coord_flip() +
@@ -198,7 +194,7 @@ ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) 
     x = "Country",
     y = "Total Sales"
   ) +
-  theme_minimal()
+  theme_light()
 ```
 
 ```{r}
@@ -270,88 +266,50 @@ ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
 ```
 
 ```{r}
-sales_by_payment <- cleaned_data %>%
-  group_by(PaymentMethod) %>%
-  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
 
-ggplot(sales_by_payment, aes(x = TotalSales, y = reorder(PaymentMethod, TotalSales))) +
-  geom_bar(stat = "identity", fill = "darkgreen") +
-  coord_flip() +
-  labs(
-    title = "Total Sales by Payment Method",
-    x = "Payment Method",
-    y = "Total Sales"
-  ) +
-  scale_x_continuous(labels = comma) +
-  theme_minimal()
-```
+library(dplyr)
+library(ggplot2)
+library(scales)
+# Summarize the data by Description and ReturnStatus
+sales_return_summary <- cleaned_data %>%
+  group_by(Description, ReturnStatus) %>%
+  summarise(TotalQuantity = sum(Quantity, na.rm = TRUE)) %>%
+  ungroup()
 
-```{r}
-top_products <- cleaned_data %>%
-  group_by(Description) %>%
-  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE)) %>%
-  arrange(desc(TotalSales)) %>%
-  slice_head(n = 10)
+# Separate the returned and not returned items
+returned_items <- sales_return_summary %>%
+  filter(ReturnStatus == "Returned")
 
-top_products <- top_products %>%
-  mutate(Percentage = TotalSales / sum(TotalSales) * 100) 
+not_returned_items <- sales_return_summary %>%
+  filter(ReturnStatus == "Not Returned")
 
-pie <- ggplot(top_products, aes(x = "", y = TotalSales, fill = Description)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start = 0) +
-  geom_text(
-    aes(label = paste0(round(Percentage, 1), "%")), 
-    position = position_stack(vjust = 0.5) 
-  ) +
-  labs(
-    title = "Top 10 Products by Total Sales",
-    x = NULL,
-    y = NULL
-  ) +
-  theme_void() + 
-  theme(
-    legend.title = element_blank(), 
-    plot.title = element_text(hjust = 0.5) 
-  )
+# Find the most returned and most not-returned item
+most_returned_item <- returned_items %>%
+  arrange(desc(TotalQuantity)) %>%
+  slice(1)
 
-pie
-```
+most_not_returned_item <- not_returned_items %>%
+  arrange(desc(TotalQuantity)) %>%
+  slice(1)
 
-```{r}
-sales_by_priority <- cleaned_data %>%
-  group_by(OrderPriority) %>%
-  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
+# Print the most returned and not returned items
+print(most_returned_item)
+print(most_not_returned_item)
 
-ggplot(sales_by_priority, aes(x = TotalSales, y = reorder(OrderPriority, TotalSales))) +
-  geom_bar(stat = "identity", fill = "orange") +
-  coord_flip() +
-  labs(
-    title = "Sales Distribution by Order Priority",
-    x = "Order Priority",
-    y = "Total Sales"
-  ) +
-   scale_x_continuous(labels = comma) +
-  theme_minimal()
-```
-
-
-```{r}
-sales_by_category_return <- cleaned_data %>%
-  group_by(Category, ReturnStatus) %>%
-  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE))
-
-ggplot(sales_by_category_return, aes(x = Category, y = TotalSales, fill = ReturnStatus)) +
+# Create a bar plot to visualize both
+ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = TotalQuantity, fill = ReturnStatus)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
-    title = "Total Sales by Category and Return Status",
-    x = "Category",
-    y = "Total Sales",
+    title = "Most Returned and Not Returned Items",
+    x = "Item Description",
+    y = "Total Quantity",
     fill = "Return Status"
   ) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip() +
   theme_minimal()
-```
 
+```
 # Hypothesis Testing
 
 ## Hypothsis 1
