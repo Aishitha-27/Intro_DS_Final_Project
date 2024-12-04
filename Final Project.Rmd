@@ -19,7 +19,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r basic_libraries, include=FALSE}
-
+library(ezids)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(outliers)
+library(reshape2) 
+library(lubridate)
+library(scales)
+library(rpart)
+library(rpart.plot)
+library(caret)
 ```
 
 # Introduction
