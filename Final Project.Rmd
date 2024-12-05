@@ -34,11 +34,67 @@ library(caret)
 
 # Introduction
 
+Shopping online has become a part of everyday life for many of us. From the convenience of browsing products from the comfort of our homes to having them delivered to our doorsteps, e-commerce has revolutionized how we shop. But what about the patterns behind these purchases, or the reasons why some products end up being returned? To better understand these dynamics, our team decided to dive into this fascinating topic.
+
+By analyzing sales and return data from an e-commerce platform, we aim to uncover trends that drive sales performance and influence product returns. This analysis will help us better understand customer behavior, product preferences, and how businesses can optimize their strategies to reduce returns while enhancing the shopping experience.
+
+
 ## Source of the Dataset
+
+The dataset used for this analysis is sourced from Kaggle. It contains detailed information about online sales transactions, including variables such as:
+
+  **Invoice number**  A unique identifier for each sales transaction (invoice)
+		
+	**stock code**  The code representing the product stock-keeping unit (SKU).
+	
+	**description**  A brief description of the product.
+	
+	**quantity**  The number of units of the product sold in the transaction
+	
+	**invoice date**  The date and time when the sale was recorded.
+	
+	**unit price**  The price per unit of the product in the transaction currency.
+	
+	**customer id **. A unique identifier for each customer
+	
+	**country**. The customer's country.
+	
+	**warehouse location**. The warehouse location from which the order was fulfilled.
+	
+	**Shipment Provider**  The provider responsible for delivering the order (e.g., UPS, FedEx).
+	
+	**Order Priority**. The priority level of the order (e.g., High, Medium, Low).
+	
+	**Discount**  The discount applied to the transaction, if any.
+	
+	**Shipping cost**. The cost of shipping for the transaction.
+	
+	**Sales channel**  The channel through which the sale was made (e.g., Online, In-store).
+	
 
 ## SMART Framework Questions
 
+To ensure a structured approach, we framed our goals using the SMART criteria. These goals are designed to be clear, actionable, and time-bound, helping us focus on meaningful insights.
+
+**Specific:** What product categories experience the highest return rates, and what patterns can we observe within these categories?
+
+**Measurable:** How does the likelihood of returns change with factors like customer location, product price, and purchase volume?
+	
+**Achievable:**  Can we identify actionable recommendations to reduce returns in the top three return-prone categories?
+	
+**Relevant:**  What purchasing trends, such as frequency or spending patterns, correlate with higher customer retention rates?
+	
+**Time-bound:**  How do seasonal trends impact sales and returns, and what differences can we observe over time?
+
+
 ## Exploratory Data Analysis 
+
+Exploratory Data Analysis is like taking a closer look at the puzzle pieces before trying to fit them together. It’s the phase where we get to know the data, spot anything unusual, and start to see the bigger picture.
+
+For this project, we began by exploring the structure of the dataset to understand the type of information it holds. We examined basic statistics, looked for missing or unusual values, and used visualizations to uncover trends. Key patterns, such as sales peaks during certain months and return spikes in specific categories, were identified early in this process.
+
+EDA also helped us ask the right questions about the data, like how customer demographics influence purchase decisions or what factors lead to returns. This phase set the stage for deeper analysis and provided a clear direction for the next steps in our project.
+
 
 ## Glimpse of a dataset
 ```{r}
