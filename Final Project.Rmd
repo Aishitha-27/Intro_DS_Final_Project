@@ -96,6 +96,7 @@ For this project, we began by exploring the structure of the dataset to understa
 EDA also helped us ask the right questions about the data, like how customer demographics influence purchase decisions or what factors lead to returns. This phase set the stage for deeper analysis and provided a clear direction for the next steps in our project.
 
 
+
 ## Glimpse of a dataset
 ```{r}
 data=read.csv("online_sales_dataset.csv")
@@ -320,17 +321,18 @@ ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
   scale_y_continuous(labels = comma) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-
+```{r}
+cleaned_data.columns
+```
 ```{r}
 
-library(dplyr)
-library(ggplot2)
-library(scales)
-# Summarize the data by Description and ReturnStatus
+# Summarize total quantities for returned and not-returned items
 sales_return_summary <- cleaned_data %>%
   group_by(Description, ReturnStatus) %>%
-  summarise(TotalQuantity = sum(Quantity, na.rm = TRUE)) %>%
-  ungroup()
+  summarise(
+    TotalQuantity = sum(Quantity, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 # Separate the returned and not returned items
 returned_items <- sales_return_summary %>%
@@ -349,7 +351,10 @@ most_not_returned_item <- not_returned_items %>%
   slice(1)
 
 # Print the most returned and not returned items
+cat("Most Returned Item:\n")
 print(most_returned_item)
+
+cat("\nMost Not-Returned Item:\n")
 print(most_not_returned_item)
 
 # Create a bar plot to visualize both
@@ -363,9 +368,95 @@ ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = To
   ) +
   scale_y_continuous(labels = scales::comma) +
   coord_flip() +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
 
 ```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+```
+```{r}
+colnames(cleaned_data)
+```
+#Purchase frequency
+
+```{r}
+library(dplyr)
+
+# Calculate the purchase frequency for each item (StockCode)
+purchase_frequency <- cleaned_data %>%
+  group_by(StockCode) %>%
+  summarise(PurchaseFrequency = n())
+
+# View the resulting data
+head(purchase_frequency)
+```
+
+```{R}
+colnames(cleaned_data)
+```
+
+```{r}
+# Group the data by product (Description) and customer type (Country)
+product_preferences <- cleaned_data %>%
+  group_by(Description, Country) %>%
+  summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE), .groups = "drop")
+
+# Create the stacked bar chart
+ggplot(product_preferences, aes(x = Description, y = TotalSales, fill = Country)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Product Preferences by Customer Type",
+    x = "Product",
+    y = "Total Sales",
+    fill = "Customer Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+```
+
+
+```{R}
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+
+# Step 1: Create a time variable (e.g., year-month) and summarize data
+sales_over_time <- cleaned_data %>%
+  mutate(TimePeriod = floor_date(as.Date(InvoiceDate), "month")) %>%  # Group by month
+  group_by(TimePeriod, Product = Description) %>%
+  summarize(TotalSales = sum(Quantity, na.rm = TRUE), .groups = 'drop')
+
+# Step 2: Line plot showing product sales over time
+ggplot(sales_over_time, aes(x = TimePeriod, y = TotalSales, color = Product)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Product Sales Over Time",
+    x = "Time Period",
+    y = "Total Sales",
+    color = "Product"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months")
+```
+
+```{r}
+
 # Hypothesis Testing
 
 ## Hypothsis 1
@@ -375,6 +466,7 @@ ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = To
 **Alternative Hypothesis (H₁)**: There is a significant association between the mode of payment and customer segmentation based on purchase frequency.
 
 **Mode of Test:** Chi-square test for independence
+```
 
 ```{r}
 unique(cleaned_data$PaymentMethod)
