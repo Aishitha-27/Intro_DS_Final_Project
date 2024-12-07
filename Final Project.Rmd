@@ -589,7 +589,7 @@ mape_value <- mape(comparison_tree$Actual, comparison_tree$Predicted)
 
 cat("MAE:", mae_value, "\nRMSE:", rmse_value, "\nMAPE:", mape_value)
 ```
-The tree struggles with accurately predicting extreme values or variations in the data.
+The model shows a moderate performance with an MAE of 631.92, indicating an average error of around 632 units in predictions. The RMSE of 830.03 suggests that the model has significant prediction errors, as it penalizes large errors more heavily. The MAPE of 2.16% indicates that, on average, the model's predictions are off by about 2.16% from the actual values, which is a reasonable level of accuracy.
 
 ## Model 2 - Classification Tree and Logistic Regression
 
@@ -651,40 +651,104 @@ classification_tree <- rpart(
 summary(classification_tree) 
 ```
 ```{r}
-fancyRpartPlot(classification_tree)
+importance_values <- as.data.frame(classification_tree$variable.importance)
+
+var_importance <- data.frame(
+  Variable = rownames(importance_values),
+  Importance = as.numeric(importance_values$`classification_tree$variable.importance`)
+)
+
+rownames(var_importance) <- NULL
+
 ```
+
 
 The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
 
 Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
 
-```{r}
 
-logistic_data <- cleaned_data %>%
-  mutate(
-    SalesChannel = ifelse(SalesChannel == "Online", 1, 0)  
-  ) %>%
-  select(
-    SalesChannel, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod
-  )
+```{R}
+predictions <- predict(classification_tree, test_data, type = "class")
+test_data$predicted_segment <- predictions
 ```
 
-We split the data into training and testing sets, with 70% of the data used for training. The model was then trained using Quantity, UnitPrice, Discount, OrderPriority, Country, and PaymentMethod as predictors. 
+```{R}
+confusion_matrix <- table(Actual = test_data$customer_segment, Predicted = test_data$predicted_segment)
+print(confusion_matrix)
+```
+```{R}
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+```
+```{R}
+fancyRpartPlot(classification_tree)
+```
+
+
+
+Logistic Regression
 
 ```{r}
+# Ensure that the SalesChannel is encoded as a binary variable (1 for Online, 0 for In-store)
+logistic_data <- cleaned_data %>%
+  mutate(
+    SalesChannel = ifelse(SalesChannel == "Online", 1, 0)  # Encoding: Online = 1, In-store = 0
+  ) %>%
+  select(SalesChannel, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod)
+
+# Convert categorical variables to factors for compatibility with the logistic regression model
+logistic_data$OrderPriority <- as.factor(logistic_data$OrderPriority)
+logistic_data$Country <- as.factor(logistic_data$Country)
+logistic_data$PaymentMethod <- as.factor(logistic_data$PaymentMethod)
+```
+```{r}
+# Set seed for reproducibility
 set.seed(123)
+
+# Split data into training (70%) and test (30%) sets
 train_indices <- sample(1:nrow(logistic_data), 0.7 * nrow(logistic_data))
 train_data <- logistic_data[train_indices, ]
 test_data <- logistic_data[-train_indices, ]
+```
 
-
+```{r}
+# Train the logistic regression model
 logistic_model <- glm(
   SalesChannel ~ Quantity + UnitPrice + Discount + OrderPriority + Country + PaymentMethod,
   data = train_data,
-  family = "binomial"
+  family = "binomial"  # Binomial for binary classification
 )
 
+# View the summary of the logistic regression model
 summary(logistic_model)
 ```
-From the model output, we find that OrderPriority is the only statistically significant predictor with **p-value = 0.0348**, which is **less** than the typical significance level of 0.05. This indicates that **OrderPriority** plays a **key role** in determining whether a sale occurs online or in-store. Other factors, such as Quantity, UnitPrice, Discount, Country, and PaymentMethod, were not found to be significant predictors in this case, as their p-values are greater than 0.05.
+
+```{R}
+predicted_probabilities <- predict(logistic_model, test_data, type = "response")
+test_data$predicted_channel <- ifelse(predicted_probabilities > 0.5, 1, 0)
+```
+```{R}
+confusion_matrix <- table(Actual = test_data$SalesChannel, Predicted = test_data$predicted_channel)
+print(confusion_matrix)
+```
+
+
+```{R}
+library(ggplot2)
+coefficients <- broom::tidy(logistic_model)
+
+ggplot(coefficients, aes(x = reorder(term, estimate), y = estimate)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Logistic Regression Coefficients", x = "Predictors", y = "Coefficient Estimate") +
+  theme_minimal()
+```
+
+
+
+
+
+
+
 
