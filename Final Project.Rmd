@@ -337,6 +337,14 @@ ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
 ```
 
 ```{r}
+
+# Summarize total quantities for returned and not-returned items
+sales_return_summary <- cleaned_data %>%
+  group_by(Description, ReturnStatus) %>%
+  summarise(
+    TotalQuantity = sum(Quantity, na.rm = TRUE),
+    .groups = "drop"
+  )
 ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = TotalQuantity, fill = ReturnStatus)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
@@ -538,9 +546,14 @@ The model's evaluation metrics suggest moderate performance in predicting total 
 Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data.
 
 ```{r}
+regression_tree <- rpart(
+  total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,data = train_data,method="anova")
 summary(regression_tree)
 ```
-
+```{R}
+library(ratt
+        le)
+```
 ```{r}
 fancyRpartPlot(regression_tree)
 ```
@@ -564,6 +577,57 @@ mape_value <- mape(comparison$Actual, comparison$Predicted)
 cat("MAE:", mae_value, "\nRMSE:", rmse_value, "\nMAPE:", mape_value)
 ```
 The tree struggles with accurately predicting extreme values or variations in the data.
+
+#Correlation plot
+```{r}
+library(ggcorrplot)
+cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
+ggcorrplot(cor_matrix, lab = TRUE)
+```
+The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows negligible correlation with both revenue and quantity sold, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other factors or strategies to optimize revenue.
+
+#Feature Importance
+```{r}
+# Extract feature importance
+importance_values <- as.data.frame(regression_tree$variable.importance)
+
+# Convert to a data frame
+var_importance <- data.frame(
+  Variable = rownames(importance_values),
+  Overall = as.numeric(importance_values$`regression_tree$variable.importance`)
+)
+
+# Reset rownames
+rownames(var_importance) <- NULL
+
+# Visualize the feature importance
+library(ggplot2)
+ggplot(var_importance, aes(x = reorder(Variable, Overall), y = Overall)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(
+    title = "Feature Importance (Regression Tree)",
+    x = "Features",
+    y = "Importance"
+  )
+
+```
+The feature importance plot shows that **total_quantity_sold** is the most significant predictor in the regression tree model, dominating the influence on the target variable. Other features, such as **Country** and **avg_discount**, have comparatively much lower importance, indicating their minimal contribution to the model's predictive power.
+
+
+```{r}
+library(rpart.plot)
+rpart.plot::rpart.plot(regression_tree, main = "Regression Tree")
+```
+This regression tree predicts outcomes based on the feature total_quantity_sold. The root node splits at total_quantity_sold < 25, with further splits refining the predictions based on smaller thresholds. Each leaf node represents the predicted value and its corresponding percentage of data, showing how sales are grouped based on total_quantity_sold.
+
+```{r}
+ggplot(data = train_data, aes(x = total_quantity_sold, y = total_sales_revenue)) +
+  geom_point(alpha = 0.4, color = "purple") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Sales Revenue vs Quantity Sold", x = "Total Quantity Sold", y = "Total Sales Revenue")
+```
+This scatter plot shows the relationship between total quantity sold and total sales revenue. There is a clear positive linear trend, as higher quantities sold generally correspond to higher sales revenue. The red line represents the regression fit, indicating a strong linear correlation between the two variables.
 
 ## Model 2
 
