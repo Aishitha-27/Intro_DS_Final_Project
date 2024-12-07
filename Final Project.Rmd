@@ -32,6 +32,8 @@ library(rpart.plot)
 library(caret)
 library(magrittr)
 library(Metrics)
+library(rattle)
+library(corrplot)
 ```
 
 # Introduction
@@ -153,8 +155,6 @@ An outlier is a data point that significantly deviates from the majority of othe
 In this analysis, we specifically focus on identifying outliers in the age groups of officers and subjects. By examining these outliers, we aim to ensure that our findings are robust and representative of the overall dataset, minimizing any undue influence from extreme values. This process strengthens the validity of our analysis by providing a more accurate portrayal of the data trends and relationships.
 
 ```{r}
-# Boxplot for Quantity to visualize outliers
-
 ggplot(data_reduced, aes(x = "", y = Quantity)) +
     geom_boxplot(fill = "lightblue", color = "darkblue") +
     labs(title = "Boxplot of Quantity", y = "Quantity") +
@@ -162,8 +162,6 @@ ggplot(data_reduced, aes(x = "", y = Quantity)) +
 ```
 
 ```{r}
-# Boxplot for UnitPrice to visualize outliers
-
 ggplot(data_reduced, aes(x = "", y = UnitPrice)) +
     geom_boxplot(fill = "lightblue", color = "darkblue") +
     labs(title = "Boxplot of UnitPrice", y = "Unit Price") +
@@ -171,8 +169,6 @@ ggplot(data_reduced, aes(x = "", y = UnitPrice)) +
 ```
 
 ```{r}
-# Boxplot for Discount to visualize outliers
-
 ggplot(data_reduced, aes(x = "", y = Discount)) +
     geom_boxplot(fill = "lightblue", color = "darkblue") +
     labs(title = "Boxplot of Discount", y = "Discount") +
@@ -248,11 +244,6 @@ As part of our analysis, we first pre-processed the data to ensure its integrity
 
 Data visualization is a crucial element of Exploratory Data Analysis (EDA), offering a way for data analysts to engage visually with the data, which aids in understanding the relationships between variables and identifying potential trends. By creating visual representations, we could effectively interpret the dataset’s underlying structure, facilitating a more intuitive and insightful analysis.**[6]**
 
-```{r}
-# Check the names of columns in cleaned_data
-colnames(cleaned_data)
-
-```
 
 ```{r}
 cleaned_data$TotalSales <- cleaned_data$UnitPrice * cleaned_data$Quantity
@@ -468,11 +459,25 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 
 # Models
 
-## Model 1
+## Model 1 - Linear Regression and Regression Tree
 
 **What factors influence total sales revenue, and how can we predict it based on product characteristics, customer demographics and order details?**
 
-We build **Linear Regression** to start off with because this question focuses on predicting total sales revenue using several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region.
+### Correlation plot
+```{r}
+cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
+
+corrplot(
+  cor_matrix, 
+  method = "color",  
+  type = "upper",    
+  addCoef.col = "black",  
+  tl.col = "black",  
+  col = colorRampPalette(c("red", "white", "purple"))(200))
+```
+The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows **negligible correlation** with **total quantity sold** and **no correlation** with **total sales revenue**, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other strategies to optimize revenue.
+
+We build **Linear Regression** to understand the significant impact of several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region on total sales revenue.
 
 ```{r}
 sales_data <- cleaned_data %>%
@@ -518,46 +523,54 @@ comparison <- data.frame(Actual = test_data$total_sales_revenue,
 
 head(comparison, 10)
 ```
-```{r}
-# Evaluate the linear regression model
-predictions <- predict(lm_sales_model, test_data)
 
-# Calculate residuals
+```{r}
 residuals <- test_data$total_sales_revenue - predictions
 
-# Calculate MAE (Mean Absolute Error)
 MAE <- mean(abs(residuals))
 
-# Calculate RMSE (Root Mean Squared Error)
 RMSE <- sqrt(mean(residuals^2))
 
-# Calculate R-squared (R²)
 SS_total <- sum((test_data$total_sales_revenue - mean(test_data$total_sales_revenue))^2)
 SS_residual <- sum(residuals^2)
 R_squared <- 1 - (SS_residual / SS_total)
 
-# Print the evaluation metrics
 cat("MAE:", MAE, "\n")
 cat("RMSE:", RMSE, "\n")
 cat("R-squared:", R_squared, "\n")
 ```
 The model's evaluation metrics suggest moderate performance in predicting total sales revenue. The **R-squared** value of 0.428 indicates that about 43% of the variance in sales revenue is explained by the model, meaning there is room for improvement. The **MAE** of 621.52 suggests that, on average, the model's predictions are off by around 621 units, while the **RMSE** of 826.14 indicates that larger prediction errors are more significant. Overall, the model provides some useful insights, but its accuracy could be improved by adding more predictors or trying different modeling approaches.
 
-Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data.
+Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data. 
 
 ```{r}
 regression_tree <- rpart(
   total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,data = train_data,method="anova")
 summary(regression_tree)
 ```
-```{R}
-library(ratt
-        le)
+```{r}
+importance_values <- as.data.frame(regression_tree$variable.importance)
+
+var_importance <- data.frame(
+  Variable = rownames(importance_values),
+  Overall = as.numeric(importance_values$`regression_tree$variable.importance`)
+)
+
+rownames(var_importance) <- NULL
+
+ggplot(var_importance, aes(x = reorder(Variable, Overall), y = Overall)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Feature Importance",x = "Features",
+    y = "Importance")
 ```
+
+The feature importance plot shows that **total_quantity_sold** is the most significant predictor in the regression tree model, dominating the influence on the target variable. Other features, such as **Country** and **avg_discount**, have comparatively much lower importance, indicating their minimal contribution to the model's predictive power.
+
 ```{r}
 fancyRpartPlot(regression_tree)
 ```
-The regression tree revealed that the **most influential variable** was **total quantity sold**.The first split occurred at a threshold of 26.5 units sold, highlighting its critical role in determining sales revenue. Subsequent splits were based on other variables, but their contribution to prediction improvement was relatively minor. This is suggesting that sales revenue is heavily driven by the quantity sold, with other factors playing a secondary role.
+The regression tree **predicts outcomes** based on the feature **total_quantity_sold**. The root node splits at total_quantity_sold < 25, with further splits refining the predictions based on smaller thresholds. Each leaf node represents the predicted value and its corresponding percentage of data, showing how sales are grouped based on total_quantity_sold.
 
 ```{r}
 tree_predictions <- predict(regression_tree, test_data)
@@ -570,66 +583,15 @@ head(comparison_tree, 10)
 ```
 
 ```{r}
-mae_value <- mae(comparison$Actual, comparison$Predicted)
-rmse_value <- rmse(comparison$Actual, comparison$Predicted)
-mape_value <- mape(comparison$Actual, comparison$Predicted)
+mae_value <- mae(comparison_tree$Actual, comparison_tree$Predicted)
+rmse_value <- rmse(comparison_tree$Actual, comparison_tree$Predicted)
+mape_value <- mape(comparison_tree$Actual, comparison_tree$Predicted)
 
 cat("MAE:", mae_value, "\nRMSE:", rmse_value, "\nMAPE:", mape_value)
 ```
 The tree struggles with accurately predicting extreme values or variations in the data.
 
-#Correlation plot
-```{r}
-library(ggcorrplot)
-cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
-ggcorrplot(cor_matrix, lab = TRUE)
-```
-The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows negligible correlation with both revenue and quantity sold, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other factors or strategies to optimize revenue.
-
-#Feature Importance
-```{r}
-# Extract feature importance
-importance_values <- as.data.frame(regression_tree$variable.importance)
-
-# Convert to a data frame
-var_importance <- data.frame(
-  Variable = rownames(importance_values),
-  Overall = as.numeric(importance_values$`regression_tree$variable.importance`)
-)
-
-# Reset rownames
-rownames(var_importance) <- NULL
-
-# Visualize the feature importance
-library(ggplot2)
-ggplot(var_importance, aes(x = reorder(Variable, Overall), y = Overall)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  coord_flip() +
-  labs(
-    title = "Feature Importance (Regression Tree)",
-    x = "Features",
-    y = "Importance"
-  )
-
-```
-The feature importance plot shows that **total_quantity_sold** is the most significant predictor in the regression tree model, dominating the influence on the target variable. Other features, such as **Country** and **avg_discount**, have comparatively much lower importance, indicating their minimal contribution to the model's predictive power.
-
-
-```{r}
-library(rpart.plot)
-rpart.plot::rpart.plot(regression_tree, main = "Regression Tree")
-```
-This regression tree predicts outcomes based on the feature total_quantity_sold. The root node splits at total_quantity_sold < 25, with further splits refining the predictions based on smaller thresholds. Each leaf node represents the predicted value and its corresponding percentage of data, showing how sales are grouped based on total_quantity_sold.
-
-```{r}
-ggplot(data = train_data, aes(x = total_quantity_sold, y = total_sales_revenue)) +
-  geom_point(alpha = 0.4, color = "purple") +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(title = "Sales Revenue vs Quantity Sold", x = "Total Quantity Sold", y = "Total Sales Revenue")
-```
-This scatter plot shows the relationship between total quantity sold and total sales revenue. There is a clear positive linear trend, as higher quantities sold generally correspond to higher sales revenue. The red line represents the regression fit, indicating a strong linear correlation between the two variables.
-
-## Model 2
+## Model 2 - Classification Tree and Logistic Regression
 
 **Which order characteristics significantly influence the likelihood of a sale occurring online versus in-store, and how can we use these factors to classify sales channels?**
 
