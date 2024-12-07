@@ -30,6 +30,8 @@ library(scales)
 library(rpart)
 library(rpart.plot)
 library(caret)
+library(magrittr)
+library(Metrics)
 ```
 
 # Introduction
@@ -41,8 +43,10 @@ By analyzing sales and return data from an e-commerce platform, we aim to uncove
 
 ## Source of the Dataset
 
-The dataset used for this analysis is sourced from Kaggle. It contains detailed information about online sales transactions, including variables such as:
+The dataset used for this analysis is sourced from Kaggle. The variables in the dataset include:
 
+Variable |  Definition  
+  :-:    |  :-- 
 Invoice number| A unique identifier for each sales transaction.
 stock code| The code representing the product stock-keeping unit.
 description| A brief description of the product.
@@ -60,29 +64,42 @@ Sales channel|  The channel through which the sale was made .
 
 ## SMART Framework Questions
 
-We applied the SMART framework to classify customers into Low, Medium, and High value segments based on their purchase frequency, product preferences, and payment methods.
+The SMART framework was popularized by George T. Doran in a 1981 paper in Management Review. And we use this framework in our analysis to set goals that are clear, attainable, and meaningful.
 
-**specific**: Can we classify customers into Low, Medium, and High value segments based on their purchasing behavior?
+**Specific:** The objective should be clear and state who will do what 
 
-**Measurable**: How will we measure the success of this classification using a classification tree model?
+**Measurable:** The objective should include how the action will be measured 
 
-**Achievable**: Is it feasible to segment customers based on total spend and other purchasing features using existing data?
+**Achievable:** The objective should be realistic and attainable 
 
-**Relevant**: How does classifying customers help businesses tailor marketing strategies for high-value customers?
+**Relevant:** The objective should make sense and fit the purpose 
 
-**Time-bound**: Can we complete the customer segmentation and analysis within the project's timeline using a training and testing approach?
+**Time-bound:** The objective should include a timeline for expected results **[2]**
 
-We applied the SMART framework to answer the question: How can we classify customers into value segments based on their purchasing behavior? We used a classification tree model to segment customers by total spend, purchase frequency, and preferences, with total_quantity being the most significant predictor for classification.
+We have leverage the understanding of what a SMART question is and poured it into the following questions to be answered as part of our analysis;
+
+**1)** What distinct customer segments can be identified by examining purchase frequency, product preferences, and payment methods, and how can these segments enhance personalized marketing efforts? 
+
+**2)**Which products exhibit the highest and most consistent demand, and how do factors like discounts, order priority, or customer demographics influence this demand over time? 
+
+**3)**How do variables like shipping costs, preferred shipment providers, and warehouse locations impact delivery times, cost-efficiency, and customer satisfaction? 
+
+**5)**What are the performance differences between online and in-store sales in terms of sales volume, customer satisfaction, and cost efficiency, and how do these inform channel-specific growth opportunities?
+
+**6)**What are the primary patterns in product returns (by product type, discount status, customer segment), and how can these insights refine return policies to increase customer satisfaction and reduce return rates?
 
 
 ## Exploratory Data Analysis 
 
-Exploratory Data Analysis (EDA) is like taking a closer look at the puzzle pieces before trying to fit them together. It’s the phase where we get to know the data, spot anything unusual, and start to see the bigger picture.
+In the scholarly realm of data analysis, Exploratory Data Analysis (EDA) stands as a pivotal phase, akin to the preliminary investigations conducted by a seasoned researcher before embarking on a comprehensive study. Picture this phase as the initial survey of an unexplored scientific landscape, where the analyst endeavors to unearth latent patterns, identify anomalies, test hypotheses, and validate assumptions through a meticulous examination of summary statistics and graphical representations.
 
-For this project, we kicked things off by getting familiar with the dataset. We took a good look at the sales data by country, explored how returns were distributed, and identified the top-selling products. We also noticed some interesting trends, like how sales varied over time and which payment methods were most popular. Visualizing this information with charts helped us spot key patterns, such as peak sales during certain months and how returns spiked in specific categories.
+Exploratory Data Analysis refers to the critical process of performing initial investigations on data so as to discover patterns,to spot anomalies,to test hypothesis and to check assumptions with the help of summary statistics and graphical representations.**[3]**
 
-EDA also helped us think about the right questions to ask: How do things like customer location or payment methods influence purchasing decisions? Why are returns higher for certain products? This stage of the project set us up for deeper analysis and gave us a clearer sense of direction for the next steps.
+The main purpose of EDA is to help look at data before making any assumptions. It can help identify obvious errors, as well as better understand patterns within the data, detect outliers or anomalous events, find interesting relations among the variables.**[4]**
 
+Moreover, EDA validates assumptions, a process analogous to literature review and theoretical grounding in academic research. It ensures that the initial assumptions made about the dataset withstand scholarly scrutiny, providing a robust foundation for subsequent analyses.
+
+For this project, we kicked things off by getting familiar with the dataset. We took a good look at the sales data by country, explored how returns were distributed, and identified the top-selling products. We also noticed some interesting trends, like how sales varied over time and which payment methods were most popular. 
 
 ## Glimpse of a dataset
 ```{r}
@@ -118,9 +135,7 @@ colSums(is.na(data_clean))
 ```{r}
 dim(data_clean)
 ```
-```{r}
-library(dplyr)
-```
+
 ## Random Sample
 ```{r}
 set.seed(123) 
@@ -128,14 +143,14 @@ data_reduced <- data_clean %>% sample_n(10000)
 ```
 
 ```{r}
-nrow(data_reduced)
-```
-
-```{r}
 dim(data_reduced)
 ```
 
-# Outliers
+# Detecting and Removing Outliers
+
+An outlier is a data point that significantly deviates from the majority of other data points in a dataset, and in Exploratory Data Analysis (EDA), outliers can significantly affect the interpretation of data by skewing visualizations, impacting statistical measures like the mean, and potentially misleading conclusions drawn from the analysis if not properly identified and handled. Outliers can be unusually high or low compared to the majority of the data points.**[5]**
+
+In this analysis, we specifically focus on identifying outliers in the age groups of officers and subjects. By examining these outliers, we aim to ensure that our findings are robust and representative of the overall dataset, minimizing any undue influence from extreme values. This process strengthens the validity of our analysis by providing a more accurate portrayal of the data trends and relationships.
 
 ```{r}
 # Boxplot for Quantity to visualize outliers
@@ -163,7 +178,7 @@ ggplot(data_reduced, aes(x = "", y = Discount)) +
     labs(title = "Boxplot of Discount", y = "Discount") +
     theme_minimal()
 ```
-## Detecting 
+
 ```{r}
 kd2_outliers <- function(column) {
   density <- density(column, na.rm = TRUE)
@@ -180,7 +195,9 @@ cat("Outliers in Quantity:", outliers_quantity, "\n")
 cat("Outliers in Unit Price:", outliers_unit_price, "\n")
 cat("Outliers in Discount:", outliers_discount, "\n")
 ```
-## Removing 
+
+**'outlierKD2'** has identified and removed outliers, but it did not actually drop the rows from the dataframe. The outlierKD2 function only returns a modified column but does not update the dataframe in place. We manually remove the rows that contain outliers from cleaned_data dataframe.
+
 ```{r}
 remove_kd2_outliers <- function(df, column) {
   density <- density(df[[column]], na.rm = TRUE)
@@ -198,16 +215,14 @@ cleaned_data <- data_reduced %>%
   remove_kd2_outliers("Discount")
 ```
 
+## Outliers are Removed
+
 Peak into the cleaned dataset after removing outliers
-```{r}
-str(cleaned_data)
-```
-```{R}
-library(ezids)
-```
+
 ```{r}
 xkablesummary(cleaned_data)
 ```
+
 Converting variables into factors
 ```{r}
 cleaned_data$InvoiceDate <- as.Date(cleaned_data$InvoiceDate, format = "%d-%m-%Y")
@@ -229,7 +244,24 @@ str(cleaned_data)
 
 # Vizualisation
 
+As part of our analysis, we first pre-processed the data to ensure its integrity and completeness, establishing a reliable foundation for subsequent analysis and visualization. With a clean and well-structured dataset, we are now prepared to delve into data visualization and exploration to uncover meaningful patterns and insights.
+
+Data visualization is a crucial element of Exploratory Data Analysis (EDA), offering a way for data analysts to engage visually with the data, which aids in understanding the relationships between variables and identifying potential trends. By creating visual representations, we could effectively interpret the dataset’s underlying structure, facilitating a more intuitive and insightful analysis.**[6]**
+
 ```{r}
+# Check the names of columns in cleaned_data
+colnames(cleaned_data)
+
+```
+
+```{r}
+cleaned_data$TotalSales <- cleaned_data$UnitPrice * cleaned_data$Quantity
+
+sales_by_country <- cleaned_data %>%
+  group_by(Country) %>%
+  summarise(TotalSales = sum(TotalSales, na.rm = TRUE))
+
+# Create the bar plot
 ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   coord_flip() +
@@ -277,12 +309,7 @@ ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) 
   ) +
   theme_minimal()
 ```
-```{r}
-library(scales)             # Load the package
-```
-```{r}
-library(magrittr)
-```
+
 ```{r}
 cleaned_data <- cleaned_data %>%
   mutate(Year = format(InvoiceDate, "%Y")) 
@@ -308,43 +335,8 @@ ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
   scale_y_continuous(labels = comma) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
 ```{r}
-cleaned_data.columns
-```
-```{r}
-
-# Summarize total quantities for returned and not-returned items
-sales_return_summary <- cleaned_data %>%
-  group_by(Description, ReturnStatus) %>%
-  summarise(
-    TotalQuantity = sum(Quantity, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Separate the returned and not returned items
-returned_items <- sales_return_summary %>%
-  filter(ReturnStatus == "Returned")
-
-not_returned_items <- sales_return_summary %>%
-  filter(ReturnStatus == "Not Returned")
-
-# Find the most returned and most not-returned item
-most_returned_item <- returned_items %>%
-  arrange(desc(TotalQuantity)) %>%
-  slice(1)
-
-most_not_returned_item <- not_returned_items %>%
-  arrange(desc(TotalQuantity)) %>%
-  slice(1)
-
-# Print the most returned and not returned items
-cat("Most Returned Item:\n")
-print(most_returned_item)
-
-cat("\nMost Not-Returned Item:\n")
-print(most_not_returned_item)
-
-# Create a bar plot to visualize both
 ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = TotalQuantity, fill = ReturnStatus)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
@@ -360,91 +352,31 @@ ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = To
     axis.text.x = element_text(angle = 45, hjust = 1),
     plot.title = element_text(hjust = 0.5, face = "bold")
   )
-
-
-```
-
-
-```{r}
-# Load necessary libraries
-library(ggplot2)
-```
-```{r}
-colnames(cleaned_data)
-```
-#Purchase frequency
-
-```{r}
-library(dplyr)
-
-# Calculate the purchase frequency for each item (StockCode)
-purchase_frequency <- cleaned_data %>%
-  group_by(StockCode) %>%
-  summarise(PurchaseFrequency = n())
-
-# View the resulting data
-head(purchase_frequency)
-```
-
-```{R}
-colnames(cleaned_data)
 ```
 
 ```{r}
-# Group the data by product (Description) and customer type (Country)
 product_preferences <- cleaned_data %>%
   group_by(Description, Country) %>%
   summarise(TotalSales = sum(UnitPrice * Quantity, na.rm = TRUE), .groups = "drop")
 
-# Create the stacked bar chart
 ggplot(product_preferences, aes(x = Description, y = TotalSales, fill = Country)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
     title = "Product Preferences by Customer Type",
     x = "Product",
     y = "Total Sales",
-    fill = "Customer Type"
-  ) +
+    fill = "Customer Type") +
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  )
-
+    plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
-
-
-```{R}
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-
-# Step 1: Create a time variable (e.g., year-month) and summarize data
-sales_over_time <- cleaned_data %>%
-  mutate(TimePeriod = floor_date(as.Date(InvoiceDate), "month")) %>%  # Group by month
-  group_by(TimePeriod, Product = Description) %>%
-  summarize(TotalSales = sum(Quantity, na.rm = TRUE), .groups = 'drop')
-
-# Step 2: Line plot showing product sales over time
-ggplot(sales_over_time, aes(x = TimePeriod, y = TotalSales, color = Product)) +
-  geom_line(size = 1) +
-  labs(
-    title = "Product Sales Over Time",
-    x = "Time Period",
-    y = "Total Sales",
-    color = "Product"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  ) +
-  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months")
-```
-
-```{r}
 
 # Hypothesis Testing
+
+In an analysis, a hypothesis is a preliminary assumption or prediction based on existing knowledge, which guides exploration and testing. This testing is typically done through statistical methods such as t-tests for mean comparisons or chi-square tests for categorical data relationships, yielding p-values that indicate whether observed patterns are statistically significant.**[7]**
+
+Hypotheses serve as focal points in EDA, helping to frame specific questions and streamline investigation by directing attention toward the most relevant variables and relationships. Through hypothesis testing, assumptions are rigorously evaluated, allowing for meaningful interpretation and robust insights that align with the project’s objectives. By narrowing the focus, hypotheses provide structure and efficiency to EDA, connecting exploratory analysis with deeper inferential statistics or predictive modeling. This approach ensures that findings are not only descriptive but also actionable, enhancing decision-making and potentially shaping strategic direction.
 
 ## Hypothsis 1
 
@@ -453,7 +385,6 @@ ggplot(sales_over_time, aes(x = TimePeriod, y = TotalSales, color = Product)) +
 **Alternative Hypothesis (H₁)**: There is a significant association between the mode of payment and customer segmentation based on purchase frequency.
 
 **Mode of Test:** Chi-square test for independence
-```
 
 ```{r}
 unique(cleaned_data$PaymentMethod)
@@ -529,17 +460,118 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 
 # Models
 
-## SMART QUESTION 1
+## Model 1
 
-**Can we classify customers into segments (e.g., Low, Medium, High value) based on purchase frequency, product preferences, and payment methods?**
+**What factors influence total sales revenue, and how can we predict it based on product characteristics, customer demographics and order details?**
 
-We build **Classification Tree** model to classify customers into predefined segments based on predictors like purchase frequency, product preferences, and payment methods. The focus of our SMART question is on prediction.
- 
-We start to aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility.
+We build **Linear Regression** to start off with because this question focuses on predicting total sales revenue using several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region.
 
 ```{r}
-library(dplyr)
+sales_data <- cleaned_data %>%
+  group_by(StockCode, OrderPriority, CustomerID) %>%
+  summarise(
+    avg_discount = mean(Discount, na.rm = TRUE),
+    total_sales_revenue = sum(UnitPrice * Quantity, na.rm = TRUE),
+    total_quantity_sold = sum(Quantity, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+customer_data <- cleaned_data %>%
+  select(CustomerID, Country, PaymentMethod) %>%
+  distinct(CustomerID, .keep_all = TRUE)
+
+sales_data <- sales_data %>%
+  left_join(customer_data, by = "CustomerID")
 ```
+
+We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data.
+```{r}
+set.seed(123)
+train_indices <- sample(1:nrow(sales_data), 0.7 * nrow(sales_data))
+train_data <- sales_data[train_indices, ]
+test_data <- sales_data[-train_indices, ]
+```
+
+After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, PaymentMethod and total_quantity_sold as predictors of total_sales_revenue. 
+```{r}
+lm_sales_model <- lm(
+  total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,
+  data = train_data)
+
+summary(lm_sales_model)
+```
+We evaluate how well our linear regression model is performing in predicting total sales revenue based on certain variables. 
+```{r}
+predictions <- predict(lm_sales_model, test_data)
+test_data$predicted_sales <- predictions
+
+comparison <- data.frame(Actual = test_data$total_sales_revenue,
+  Predicted = test_data$predicted_sales)
+
+head(comparison, 10)
+```
+```{r}
+# Evaluate the linear regression model
+predictions <- predict(lm_sales_model, test_data)
+
+# Calculate residuals
+residuals <- test_data$total_sales_revenue - predictions
+
+# Calculate MAE (Mean Absolute Error)
+MAE <- mean(abs(residuals))
+
+# Calculate RMSE (Root Mean Squared Error)
+RMSE <- sqrt(mean(residuals^2))
+
+# Calculate R-squared (R²)
+SS_total <- sum((test_data$total_sales_revenue - mean(test_data$total_sales_revenue))^2)
+SS_residual <- sum(residuals^2)
+R_squared <- 1 - (SS_residual / SS_total)
+
+# Print the evaluation metrics
+cat("MAE:", MAE, "\n")
+cat("RMSE:", RMSE, "\n")
+cat("R-squared:", R_squared, "\n")
+```
+The model's evaluation metrics suggest moderate performance in predicting total sales revenue. The **R-squared** value of 0.428 indicates that about 43% of the variance in sales revenue is explained by the model, meaning there is room for improvement. The **MAE** of 621.52 suggests that, on average, the model's predictions are off by around 621 units, while the **RMSE** of 826.14 indicates that larger prediction errors are more significant. Overall, the model provides some useful insights, but its accuracy could be improved by adding more predictors or trying different modeling approaches.
+
+Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data.
+
+```{r}
+summary(regression_tree)
+```
+
+```{r}
+fancyRpartPlot(regression_tree)
+```
+The regression tree revealed that the **most influential variable** was **total quantity sold**.The first split occurred at a threshold of 26.5 units sold, highlighting its critical role in determining sales revenue. Subsequent splits were based on other variables, but their contribution to prediction improvement was relatively minor. This is suggesting that sales revenue is heavily driven by the quantity sold, with other factors playing a secondary role.
+
+```{r}
+tree_predictions <- predict(regression_tree, test_data)
+test_data$predicted_sales_tree <- tree_predictions
+
+comparison_tree <- data.frame(Actual = test_data$total_sales_revenue,
+  Predicted = test_data$predicted_sales_tree)
+
+head(comparison_tree, 10)
+```
+
+```{r}
+mae_value <- mae(comparison$Actual, comparison$Predicted)
+rmse_value <- rmse(comparison$Actual, comparison$Predicted)
+mape_value <- mape(comparison$Actual, comparison$Predicted)
+
+cat("MAE:", mae_value, "\nRMSE:", rmse_value, "\nMAPE:", mape_value)
+```
+The tree struggles with accurately predicting extreme values or variations in the data.
+
+## Model 2
+
+**Which order characteristics significantly influence the likelihood of a sale occurring online versus in-store, and how can we use these factors to classify sales channels?**
+
+We build **Classification Tree** model to classify customers into predefined segments based on predictors like purchase frequency, product preferences, and payment methods.
+ 
+We start to aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility.
 ```{r}
 customer_data <- cleaned_data %>%
   group_by(CustomerID) %>%
@@ -575,11 +607,8 @@ customer_data$preferred_payment <- as.numeric(customer_data$preferred_payment)
 customer_data$preferred_category <- as.numeric(customer_data$preferred_category)
 ```
 
-
 We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
-```{r}
-library(rpart)
-```
+
 ```{r}
 set.seed(123)
 train_indices <- sample(1:nrow(customer_data), 0.7 * nrow(customer_data))
@@ -592,316 +621,29 @@ classification_tree <- rpart(
   data = train_data,
   method = "class"
 )
-```
 
-```{r}
 summary(classification_tree) 
-```
-```{r}
-library(rattle)
 ```
 ```{r}
 fancyRpartPlot(classification_tree)
 ```
-The model begins by predicting the **Medium** class at the **root node**, with **6397 observations** in total. The first split occurs based on the variable total_quantity, which is identified as the most significant predictor. Observations where total_quantity < 8.5 are directed to Node 2, while those with total_quantity >= 8.5 are directed to Node 3.
 
-At **Node 2**, there are **1,002 observations**, and the model confidently predicts a majority of customers under Low segment, indicating that those with lower purchase quantities are most likely classified in this segment. On the other hand, **Node 3**, containing **5,377 observations**, continues to predict the Medium segment as the majority class. 
+The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
 
-A subsequent split occurs at total_quantity >= 27.5, further refining the classification into Node 6 and Node 7. **Node 6** includes **2,910 observations**, with a higher likelihood of customers being classified as High, indicating that moderate purchase quantities begin to influence the prediction towards high-value segments.
-
-At Node 6, the model makes another split at total_quantity >= 60.5, dividing customers further into Node 12 and Node 13. **Node 12** contains **117 observations** and achieves near-perfect accuracy, with 92.3% of customers being classified as High, reflecting that customers with extremely high purchase quantities are almost in this segment. Meanwhile, **Node 13**, with **2,793 observations**, also predicts High.
-
-Finally, **Node 7**, containing **2,467 observations**, predicts the Medium segment with high confidence. At this node, 72.7% of customers are classified as Medium. Additional splits within **Node 13** further fine-tune the prediction for High and Medium segments based on thresholds like total_quantity >= 38.5.
-
-Overall, the model's accuracy varies by segment. The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
-
-#Evaluation
-
-```{r}
-str(cleaned_data)
-```
-
-
-#MODEL EVALUATION- Confusion Matrix and Accuracy
-
-```{r}
-# Load necessary library
-library(caret)
-```
-```{r}
-test_predictions <- factor(test_predictions)
-test_data$customer_segment <- factor(test_data$customer_segment)
-```
-
-```{r}
-levels(test_predictions) <- levels(test_data$customer_segment)
-```
-
-```{r}
-# Predictions on test data
-test_predictions <- predict(classification_tree, test_data, type = "class")
-
-# Confusion Matrix
-conf_matrix <- confusionMatrix(test_predictions, test_data$customer_segment)
-
-# Print confusion matrix and overall accuracy
-print(conf_matrix)
-
-# Segment-wise accuracy
-accuracy_per_segment <- conf_matrix$byClass
-print(accuracy_per_segment)
-```
-# 10-Fold Cross-Validation
-```{r}
-set.seed(123)
-cv_results <- train(
-  customer_segment ~ purchase_frequency + total_quantity + avg_discount + preferred_payment + preferred_category,
-  data = train_data,
-  method = "rpart",
-  trControl = trainControl(method = "cv", number = 10)
-)
-
-# Print cross-validation results
-print(cv_results)
-```
-#AUC AND ROC CURVE
-```{r}
-# Ensure pROC library is loaded
-library(pROC)
-
-
-# Compute ROC curve
-roc_curve <- roc(
-  response = test_data$binary_segment,   # Binary outcome variable
-  predictor = probs,                     # Predicted probabilities
-  levels = c("0", "1"),                  # Explicitly define levels: control = 0, case = 1
-  direction = "<"                        # Controls < Cases (default)
-)
-
-# Plot the ROC Curve
-plot(roc_curve, main = "ROC Curve for High Segment")
-
-# Calculate AUC
-auc_value <- auc(roc_curve)
-
-# Print the AUC value
-print(paste("AUC:", auc_value))
-
-
-
-```
-
-
-## SMART QUESTION 2
-
-**What factors drive product demand, and how can we predict the quantity sold based on discounts, order priority, and customer demographics?** 
-
-We build **Linear regression** model since we are analyzing relationships between predictors (e.g., discounts, order priority) and the target (quantity sold). The focus of our SMART question is inference.
-We started by aggregating data, grouping by product, order priority, and customer. Key metrics like average discount, total quantity sold, and total sales were calculated. We also merged customer demographics, like country and payment method, to enrich the dataset.
-
-```{r}
-
-demand_data <- cleaned_data %>%
-  group_by(StockCode, OrderPriority, CustomerID) %>%
-  summarise(
-    avg_discount = mean(Discount, na.rm = TRUE),
-    total_quantity_sold = sum(Quantity, na.rm = TRUE),
-    total_sales = sum(UnitPrice * Quantity, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-
-demand_data <- demand_data %>%
-  left_join(cleaned_data %>%
-              select(CustomerID, Country, PaymentMethod) %>%
-              distinct(),
-            by = "CustomerID")
-
-
-demand_data$OrderPriority <- as.factor(demand_data$OrderPriority)
-demand_data$Country <- as.factor(demand_data$Country)
-demand_data$PaymentMethod <- as.factor(demand_data$PaymentMethod)
-
-
-set.seed(123)
-train_indices <- sample(1:nrow(demand_data), 0.7 * nrow(demand_data))
-train_data <- demand_data[train_indices, ]
-test_data <- demand_data[-train_indices, ]
-
-```
-After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, and PaymentMethod as predictors. The results showed that higher discounts and high-priority orders are strong drivers of demand, while regional differences and payment preferences also play significant roles. The model’s predictions aligned closely with actual values, confirming its reliability in capturing patterns in product demand.
-```{r}
-lm_model <- lm(
-  total_quantity_sold ~ avg_discount + OrderPriority + Country + PaymentMethod,
-  data = train_data
-)
-```
-
-```{r}
-
-summary(lm_model)
-```
-
-```{r}
-
-predictions <- predict(lm_model, test_data)
-
-test_data$predicted_quantity <- predictions
-comparison <- data.frame(
-  Actual = test_data$total_quantity_sold,
-  Predicted = test_data$predicted_quantity
-)
-```
-
-```{r}
-head(comparison, 10)
-
-```
-The linear regression model begins by predicting the total_quantity_sold for 4,600 training observations in total. The most significant predictor is identified as avg_discount, reflecting its strong influence on customer purchasing behavior. As avg_discount increases, the total quantity sold increases proportionally, showing a clear positive relationship.
-
-The second most impactful predictor is OrderPriority, with high-priority orders driving significantly larger quantities. This reflects the nature of urgent or bulk purchases, where customers prioritize faster or prioritized handling.
-
-Country is the next key variable, capturing regional differences in purchasing patterns. Countries with higher purchasing power or better e-commerce infrastructure show a noticeable increase in sales volumes. PaymentMethod also plays a significant role, with flexible and convenient payment options correlating with larger purchases.
-
-The model’s predictions were tested on a separate dataset of 1,971 observations, achieving the following performance metrics:
-Adjusted R-squared: 0.72, indicating that 72% of the variability in the total quantity sold is explained by the predictors.
-Root Mean Square Error (RMSE): 15.3, measuring the average error in predicted sales quantities.
-Mean Absolute Error (MAE): 11.8, showing the average absolute deviation from actual values.
-
-For test data, the predictions closely align with actual values. For example, customers with a high discount and high-priority orders consistently show higher predicted quantities, with minimal deviation. This demonstrates the model’s reliability in forecasting demand trends.
-
-Overall, the model effectively identifies the key factors influencing product demand. It performs best in scenarios where discounts and order priority play a prominent role, providing actionable insights for optimizing pricing strategies and operational efficiency. The alignment between predicted and actual values validates the model’s robustness in capturing the underlying patterns of product demand.
-
-#Check for multi-colinearity
-```{R}
-library(car)
-vif(lm_model)
-```
-None of these variables show problematic levels of multicollinearity, as all GVIF values are close to 1, indicating that the variables do not exhibit high correlations with each other.
-
-#Model Performance
-```{r}
-summary(comparison)
-```
-#EVALUATIOPN 
-```{R}
-library(Metrics)
-
-mae_value <- mae(test_data$total_quantity_sold, test_data$predicted_quantity)
-mse_value <- mse(test_data$total_quantity_sold, test_data$predicted_quantity)
-r2_value <- 1 - sum((test_data$total_quantity_sold - test_data$predicted_quantity)^2) / 
-                 sum((test_data$total_quantity_sold - mean(test_data$total_quantity_sold))^2)
-
-cat("MAE:", mae_value, "\nMSE:", mse_value, "\nR-squared:", r2_value, "\n")
-```
-#RESIDUAL ANALYSIS
-```{R}
-# Histogram
-hist(residuals, breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
-
-# Q-Q Plot
-qqnorm(residuals)
-qqline(residuals, col = "red")
-
-```
-#Cross Validation
-```{r}
-library(caret)
-train_control <- trainControl(method = "cv", number = 10)
-cv_model <- train(total_quantity_sold ~ avg_discount + OrderPriority + Country + PaymentMethod, 
-                  data = demand_data, 
-                  method = "lm", 
-                  trControl = train_control)
-print(cv_model)
-```
-#Assessing the predictors
-
-```{r}
-lm_model_interaction <- lm(total_quantity_sold ~ avg_discount * OrderPriority + Country + PaymentMethod, data = train_data)
-summary(lm_model_interaction)
-```
-
-## SMART QUESTION 3
-
-**How do shipment providers, warehouse locations, and order priority influence shipping costs, and how can we predict cost efficiency?**
-
-We build **Linear Regression** model because we want to quantify the relationship between shipping cost based on ShipmentProvider, WarehouseLocation and OrderPriority. The focus of our SMART question is on inference as well as prediction.
-
-We create a df with only relevant columns and then convert the categorical variables to factor.
-
-```{r}
-logistics_data <- cleaned_data %>%
-  select(ShippingCost, ShipmentProvider, WarehouseLocation, OrderPriority) %>%
-  filter(!is.na(ShippingCost))  
-
-logistics_data$ShipmentProvider <- as.factor(logistics_data$ShipmentProvider)
-logistics_data$WarehouseLocation <- as.factor(logistics_data$WarehouseLocation)
-logistics_data$OrderPriority <- as.factor(logistics_data$OrderPriority)
-```
-
-We apply the Linear Regression Model.
-```{r}
-lm_model <- lm(ShippingCost ~ ShipmentProvider + WarehouseLocation + OrderPriority, data = logistics_data)
-
-summary(lm_model)
-```
-
-#Evaluation-Rediusal Analysis
-```{r}
-# Residuals vs Fitted plot
-plot(lm_model$fitted.values, lm_model$residuals, 
-     main = "Residuals vs Fitted Values", 
-     xlab = "Fitted Values", 
-     ylab = "Residuals")
-abline(h = 0, col = "red")
-```
-#QQ Plot
-```{R}
-# Q-Q plot
-qqnorm(lm_model$residuals)
-qqline(lm_model$residuals, col = "red")
-```
-#Multicolinearity check
-```{r}
-vif(lm_model)
-
-```
-All the GVIF values and the adjusted GVIF^(1/(2*Df)) values are close to 1, indicating that there is no significant multicollinearity among the predictors in your model.
-
-#Cross Validation
-```{r}
-library(caret)
-train_control <- trainControl(method = "cv", number = 10)
-cv_model <- train(ShippingCost ~ ShipmentProvider + WarehouseLocation + OrderPriority, 
-                  data = logistics_data, 
-                  method = "lm", 
-                  trControl = train_control)
-print(cv_model)
-```
-
-## SMART QUESTION 4
-
-**What factors influence whether a sale occurs online or in-store, and how can we classify sales channel based on customer and order characteristics?**
-
-We build **Logistic Regression** model because we want to find a binary outcome. The focus of our SMART question is prediction.
-The model predicts whether a sale occurs online or in-store, focusing on customer and order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannelBinary), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
+Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
 
 ```{r}
 
 logistic_data <- cleaned_data %>%
   mutate(
-    SalesChannelBinary = ifelse(SalesChannel == "Online", 1, 0)  # Encode SalesChannel as binary
+    SalesChannel = ifelse(SalesChannel == "Online", 1, 0)  
   ) %>%
   select(
-    SalesChannelBinary, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod
+    SalesChannel, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod
   )
-
-
-logistic_data$OrderPriority <- as.factor(logistic_data$OrderPriority)
-logistic_data$Country <- as.factor(logistic_data$Country)
-logistic_data$PaymentMethod <- as.factor(logistic_data$PaymentMethod)
 ```
-We split the data into training and testing sets, with 70% of the data used for training. The model was then trained using Quantity, UnitPrice, Discount, OrderPriority, Country, and PaymentMethod as predictors. After fitting the logistic regression model, predictions were made on the test set, generating probabilities of online sales, which were then converted into binary classifications based on a threshold of 0.5.
+
+We split the data into training and testing sets, with 70% of the data used for training. The model was then trained using Quantity, UnitPrice, Discount, OrderPriority, Country, and PaymentMethod as predictors. 
 
 ```{r}
 set.seed(123)
@@ -911,175 +653,12 @@ test_data <- logistic_data[-train_indices, ]
 
 
 logistic_model <- glm(
-  SalesChannelBinary ~ Quantity + UnitPrice + Discount + OrderPriority + Country + PaymentMethod,
+  SalesChannel ~ Quantity + UnitPrice + Discount + OrderPriority + Country + PaymentMethod,
   data = train_data,
   family = "binomial"
 )
-```
-```{r}
+
 summary(logistic_model)
 ```
-
-```{r}
-roc_curve <- roc(test_data$SalesChannelBinary, test_data$PredictedProbability)
-plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
-
-
-auc_value <- auc(roc_curve)
-auc_value
-
-
-```
-We evaluated the model’s performance by calculating accuracy and generating an ROC curve, with the AUC demonstrating its ability to distinguish between online and in-store sales effectively. This step-by-step approach allowed us to uncover the key factors influencing sales channels, providing valuable insights for optimizing marketing strategies and operational planning.
-
-```{r}
-test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
-test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  # Threshold at 0.5
-```
-
-The logistic regression model predicts whether a sale occurs online or in-store, using predictors such as quantity, unit price, discount, order priority, country, and payment method. Discounts were the most significant factor, strongly associated with online sales, while larger quantities were linked to in-store purchases. High-priority orders and flexible payment methods also leaned toward online sales, while geographical differences highlighted regional preferences for sales channels.
-
-Tested on 1,971 observations, the model achieved an accuracy of 85.4% and an AUC of 0.91, demonstrating strong performance in distinguishing between online and in-store sales. This model provides clear insights into customer behavior and purchasing patterns, enabling businesses to tailor strategies effectively.
-
-#EVALUATION
-```{r}
-# Ensure that both actual and predicted values are factors with the same levels
-test_data$SalesChannelBinary <- factor(test_data$SalesChannelBinary, levels = c(0, 1))
-test_data$PredictedClass <- factor(test_data$PredictedClass, levels = c(0, 1))
-library(caret)
-
-# Generate confusion matrix
-confusion_matrix <- confusionMatrix(test_data$PredictedClass, test_data$SalesChannelBinary)
-confusion_matrix
-```
-
-```{r}
-accuracy <- mean(test_data$PredictedClass == test_data$SalesChannelBinary)
-accuracy
-
-confusion_matrix <- confusionMatrix(factor(test_data$PredictedClass), factor(test_data$SalesChannelBinary))
-confusion_matrix
-
-precision <- confusion_matrix$byClass['Pos Pred Value']
-recall <- confusion_matrix$byClass['Sensitivity']
-f1_score <- 2 * (precision * recall) / (precision + recall)
-precision
-recall
-f1_score
-
-```
-
-## SMART QUESTION 5
-
-**How can we predict product returns pattern based on product type, discount status, and customer segment, and what factors influence return rates ?**
-
-We build **Logistic Regression** model because we want to find binary outcome. The focus of our SMART question is inference.
-The Logistic Regression model predicts the product return patterns and understand the factors influencing return rates. The dataset was prepared by encoding the return status as a binary variable (ReturnBinary), where “Returned” was represented as 1 and “Not Returned” as 0. The data was then aggregated at the product and customer levels to calculate metrics such as the average discount (avg_discount), the most common product type (product_type), and the total spend per customer (total_spend).
-
-```{r}
-
-returns_data <- cleaned_data %>%
-  mutate(
-    ReturnBinary = ifelse(ReturnStatus == "Returned", 1, 0)  # Encode ReturnStatus as binary
-  ) %>%
-  group_by(StockCode, CustomerID) %>%
-  summarise(
-    ReturnBinary = max(ReturnBinary, na.rm = TRUE),  # Binary target
-    avg_discount = mean(Discount, na.rm = TRUE),    # Average discount
-    product_type = as.character(names(sort(table(Category), decreasing = TRUE)[1])), # Most common product type
-    total_spend = sum(UnitPrice * Quantity, na.rm = TRUE) # Total spend by customer
-  ) %>%
-  ungroup()
-```
-To further segment customers, we divided them into “Low,” “Medium,” and “High” segments based on their total spending, using the 1st and 3rd quartiles as thresholds. Categorical variables such as product_type and customer_segment were converted into factors to ensure compatibility with the logistic regression model.
-```{r}
-
-spend_summary <- summary(returns_data$total_spend)
-low_threshold <- spend_summary["1st Qu."]
-high_threshold <- spend_summary["3rd Qu."]
-
-returns_data <- returns_data %>%
-  mutate(
-    customer_segment = case_when(
-      total_spend < low_threshold ~ "Low",
-      total_spend >= low_threshold & total_spend < high_threshold ~ "Medium",
-      total_spend >= high_threshold ~ "High"
-    )
-  )
-
-
-returns_data$product_type <- as.factor(returns_data$product_type)
-returns_data$customer_segment <- as.factor(returns_data$customer_segment)
-```
-
-The dataset was split into training and testing sets, with 70% of the data used for training. The model was trained using avg_discount, product_type, and customer_segment as predictors. Predictions were made on the test set, generating probabilities for product returns, which were then classified as returned (1) or not returned (0) based on a threshold of 0.5.
-
-```{r}
-
-set.seed(123)
-train_indices <- sample(1:nrow(returns_data), 0.7 * nrow(returns_data))
-train_data <- returns_data[train_indices, ]
-test_data <- returns_data[-train_indices, ]
-```
-
-```{r}
-
-logistic_model <- glm(
-  ReturnBinary ~ avg_discount + product_type + customer_segment,
-  data = train_data,
-  family = "binomial"
-)
-```
-
-```{r}
-summary(logistic_model)
-```
-```{r}
-test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
-test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)  # Threshold at 0.5
-
-```
-The logistic regression model predicts whether a product will be returned, using predictors such as average discount, product type, and customer segment. Average discount emerged as a significant factor, with higher discounts associated with an increased likelihood of product returns. Product type also played a crucial role, with certain categories showing higher return rates, reflecting product-specific tendencies. Customer segments, particularly the high-spending segment, were less likely to return products, suggesting a stronger commitment to purchases among these customers.
-
-Tested on a dataset of 1,971 observations, the model achieved an accuracy of 82.7% and an AUC of 0.89, demonstrating strong performance in distinguishing between returned and non-returned products. This model provides valuable insights into return patterns, enabling businesses to better manage returns by optimizing discount strategies and tailoring approaches for different product types and customer segments.
-
-```{r}
-# Predict probabilities for product returns
-test_data$PredictedProbability <- predict(logistic_model, test_data, type = "response")
-
-# Convert probabilities to binary predictions (1 = Returned, 0 = Not Returned)
-test_data$PredictedClass <- ifelse(test_data$PredictedProbability > 0.5, 1, 0)
-```
-
-
-```{r}
-# Generate confusion matrix
-confusion_matrix <- confusionMatrix(as.factor(test_data$PredictedClass), as.factor(test_data$ReturnBinary))
-
-# Display confusion matrix
-confusion_matrix
-```
-
-```{r}
-# Calculate accuracy
-accuracy <- confusion_matrix$overall['Accuracy']
-accuracy
-# Extract Precision, Recall, and F1-Score from confusion matrix
-precision <- confusion_matrix$byClass['Precision']
-recall <- confusion_matrix$byClass['Recall']
-f1_score <- confusion_matrix$byClass['F1']
-
-precision
-recall
-f1_score
-```
-```{r}
-library(pROC)
-
-roc_curve <- roc(test_data$ReturnBinary, test_data$PredictedProbability)
-plot(roc_curve, main = "ROC Curve")
-auc_value <- auc(roc_curve)
-
-```
-
+From the model output, we find that OrderPriority is the only statistically significant predictor with **p-value = 0.0348**, which is **less** than the typical significance level of 0.05. This indicates that **OrderPriority** plays a **key role** in determining whether a sale occurs online or in-store. Other factors, such as Quantity, UnitPrice, Discount, Country, and PaymentMethod, were not found to be significant predictors in this case, as their p-values are greater than 0.05.
 
