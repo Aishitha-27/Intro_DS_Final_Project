@@ -650,6 +650,10 @@ corrplot(
   col = colorRampPalette(c("red", "white", "purple"))(200),
  mar = c(0, 0, 1, 0))
 ```
+The heatmap shows that `purchase_frequency` and `total_quantity` have a moderate positive correlation (0.37), indicating frequent purchasers tend to buy more items. Other variables, such as `avg_discount`, `preferred_payment`, and `preferred_category`, show weak or no linear correlations with others. This suggests `purchase_frequency` and `total_quantity` might be the most relevant predictors, while other features could contribute in nonlinear ways.
+
+
+
 
 We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
 
@@ -685,11 +689,15 @@ test_data$predicted_segment <- predictions
 confusion_matrix <- table(Actual = test_data$customer_segment, Predicted = test_data$predicted_segment)
 print(confusion_matrix)
 ```
+This confusion matrix evaluates a classification model's performance. The diagonal values represent correct predictions, with the model performing best for the `Medium` class (1009 correct). Significant confusion exists between `High` and `Medium` classes, with many misclassifications (e.g., 304 `High` predicted as `Medium`). Improving feature representation or using a different model could enhance accuracy.
+
 
 ```{R}
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
 ```
+The classification tree model achieved an accuracy of **63.97%**, meaning it correctly predicted approximately 64% of the instances in the dataset. While this shows moderate performance, the model struggles with misclassifications, as seen in the confusion matrix, particularly between `High` and `Medium` categories. Further tuning, feature engineering, or trying alternative models may improve this result.
+
 
 ```{r}
 predicted_probs <- predict(classification_tree, test_data, type = "prob")
@@ -720,6 +728,9 @@ abline(a = 0, b = 1, col = "red", lty = 2)
 auc <- sum((fpr[-1] - fpr[-length(fpr)]) * (tpr[-1] + tpr[-length(tpr)]) / 2)
 cat("AUC:", auc, "\n")
 ```
+The ROC curve evaluates the model's ability to classify "High" customer segments, with the blue line showing the trade-off between True Positive Rate (sensitivity) and False Positive Rate. The curve's proximity to the top-left corner indicates strong performance, significantly better than the random classifier (red dashed line). A higher AUC (Area Under the Curve) reflects better overall model accuracy in distinguishing "High" from non-"High" customers.
+
+
 
 We split the data into training and testing sets, with 70% of the data used for training. The model was then trained using Quantity, UnitPrice, Discount, OrderPriority, Country, and PaymentMethod as predictors. 
 
@@ -756,6 +767,8 @@ performance <- confusionMatrix(factor(test_data$predicted_channel), factor(test_
 accuracy <- performance$overall["Accuracy"]
 print(accuracy)
 ```
+The logistic regression model's accuracy is **49.86%**, meaning it correctly predicts the target class in about half of the cases. This suggests the model is only slightly better than random guessing for a multi-class classification problem. To improve performance, consider feature engineering, balancing the dataset, or experimenting with other models like decision trees or ensemble methods.
+
 
 ```{r}
 thresholds <- seq(0, 1, by = 0.01)
