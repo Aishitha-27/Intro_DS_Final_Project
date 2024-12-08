@@ -463,20 +463,6 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 
 **What factors influence total sales revenue, and how can we predict it based on product characteristics, customer demographics and order details?**
 
-### Correlation plot
-```{r}
-cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
-
-corrplot(
-  cor_matrix, 
-  method = "color",  
-  type = "upper",    
-  addCoef.col = "black",  
-  tl.col = "black",  
-  col = colorRampPalette(c("red", "white", "purple"))(200))
-```
-The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows **negligible correlation** with **total quantity sold** and **no correlation** with **total sales revenue**, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other strategies to optimize revenue.
-
 We build **Linear Regression** to understand the significant impact of several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region on total sales revenue.
 
 ```{r}
@@ -504,6 +490,19 @@ train_indices <- sample(1:nrow(sales_data), 0.7 * nrow(sales_data))
 train_data <- sales_data[train_indices, ]
 test_data <- sales_data[-train_indices, ]
 ```
+
+```{r}
+cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
+
+corrplot(
+  cor_matrix, 
+  method = "color",  
+  type = "upper",    
+  addCoef.col = "black",  
+  tl.col = "black",  
+  col = colorRampPalette(c("red", "white", "purple"))(200))
+```
+The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows **negligible correlation** with **total quantity sold** and **no correlation** with **total sales revenue**, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other strategies to optimize revenue.
 
 After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, PaymentMethod and total_quantity_sold as predictors of total_sales_revenue. 
 ```{r}
@@ -548,6 +547,7 @@ regression_tree <- rpart(
   total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,data = train_data,method="anova")
 summary(regression_tree)
 ```
+
 ```{r}
 importance_values <- as.data.frame(regression_tree$variable.importance)
 
@@ -651,6 +651,7 @@ classification_tree <- rpart(
 
 summary(classification_tree) 
 ```
+
 ```{r}
 fancyRpartPlot(classification_tree)
 ```
@@ -667,12 +668,10 @@ test_data$predicted_segment <- predictions
 confusion_matrix <- table(Actual = test_data$customer_segment, Predicted = test_data$predicted_segment)
 print(confusion_matrix)
 ```
+
 ```{R}
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
-```
-```{R}
-fancyRpartPlot(classification_tree)
 ```
 
 Extract variable importance from the mode
@@ -686,15 +685,6 @@ var_importance <- data.frame(
 
 rownames(var_importance) <- NULL
 ```
-
-bar chart to visualize feature importance
-```{r}
-ggplot(var_importance, aes(x = reorder(Variable, Importance), y = Importance)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  coord_flip() +
-  labs(title = "Feature Importance", x = "Features", y = "Importance")
-```
-
 
 Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
 
@@ -732,27 +722,15 @@ From the model output, we find that OrderPriority is the only statistically sign
 predicted_probabilities <- predict(logistic_model, test_data, type = "response")
 test_data$predicted_channel <- ifelse(predicted_probabilities > 0.5, 1, 0)
 ```
+
 ```{R}
 confusion_matrix <- table(Actual = test_data$SalesChannel, Predicted = test_data$predicted_channel)
 print(confusion_matrix)
 ```
+
 ```{r}
-library(caret)
 performance <- confusionMatrix(factor(test_data$predicted_channel), factor(test_data$SalesChannel))
 print(performance)
-```
-
-
-Visualize the significance and effect of predictors.
-```{R}
-library(ggplot2)
-coefficients <- broom::tidy(logistic_model)
-
-ggplot(coefficients, aes(x = reorder(term, estimate), y = estimate)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  coord_flip() +
-  labs(title = "Logistic Regression Coefficients", x = "Predictors", y = "Coefficient Estimate") +
-  theme_minimal()
 ```
 
 
