@@ -34,6 +34,7 @@ library(magrittr)
 library(Metrics)
 library(rattle)
 library(corrplot)
+library(pROC)
 ```
 
 # Introduction
@@ -634,6 +635,22 @@ customer_data$preferred_payment <- as.numeric(customer_data$preferred_payment)
 customer_data$preferred_category <- as.numeric(customer_data$preferred_category)
 ```
 
+
+```{r}
+cor_matrix <- cor(customer_data %>% 
+                    select(purchase_frequency, total_quantity, avg_discount, preferred_payment, preferred_category), 
+                  use = "complete.obs")
+
+corrplot(
+  cor_matrix, 
+  method = "color",  
+  type = "upper",    
+  addCoef.col = "black",  
+  tl.col = "black",  
+  col = colorRampPalette(c("red", "white", "purple"))(200),
+ mar = c(0, 0, 1, 0))
+```
+
 We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
 
 ```{r}
@@ -674,25 +691,7 @@ accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
 ```
 
-Extract variable importance from the mode
-```{R}
-importance_values <- as.data.frame(classification_tree$variable.importance)
-
-var_importance <- data.frame(
-  Variable = rownames(importance_values),
-  Importance = as.numeric(importance_values$`classification_tree$variable.importance`)
-)
-
-rownames(var_importance) <- NULL
-```
-
-AUC ROC
 ```{r}
-print(colnames(test_data))
-```
-```{r}
-# Load necessary libraries
-library(pROC)
 
 # Convert customer_segment to binary indicators (one-vs-rest approach)
 test_data_binary <- model.matrix(~ customer_segment - 1, data = test_data)
@@ -719,25 +718,6 @@ auc_df <- data.frame(
 print(auc_df)
 
 ```
-
-
-```{r}
-# Select numeric predictors
-numeric_data <- customer_data %>%
-  select(purchase_frequency, total_quantity, avg_discount, preferred_payment, preferred_category)
-
-# Compute correlation matrix
-correlation_matrix <- cor(numeric_data, use = "complete.obs")
-print("Correlation Matrix:")
-print(correlation_matrix)
-
-# Visualize correlation heatmap
-library(corrplot)
-corrplot(correlation_matrix, method = "color", type = "upper", 
-         tl.col = "black", tl.srt = 45, addCoef.col = "black",
-         title = "Correlation Heatmap", mar = c(0, 0, 1, 0))
-```
-
 
 Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
 
@@ -782,25 +762,22 @@ print(confusion_matrix)
 ```
 
 ```{r}
-library(caret)
 performance <- confusionMatrix(factor(test_data$predicted_channel), factor(test_data$SalesChannel))
 
-# Extract accuracy
 accuracy <- performance$overall["Accuracy"]
 print(accuracy)
 
 ```
-```{R}
-# Load the necessary library
-library(pROC)
+```{r}
 
-# Generate predicted probabilities for the test set
 predicted_probabilities <- predict(logistic_model, test_data, type = "response")
 
 # Create the ROC curve
-roc_curve <- roc(test_data$SalesChannel, predicted_probabilities)
 
-# Plot the ROC curve
+roc_curve <- roc(response = test_data$SalesChannel,
+                 predictor = predicted_probabilities)
+
+
 plot(roc_curve, col = "blue", main = "ROC Curve for Logistic Regression")
 abline(a = 0, b = 1, col = "red", lty = 2)  # Diagonal line for random guessing
 
@@ -809,25 +786,8 @@ auc_value <- auc(roc_curve)
 cat("AUC:", auc_value, "\n")
 
 ```
-Correlation PLot
 
-```{r}
-# Select numeric columns for correlation
-numeric_data <- logistic_data %>%
-  select(Quantity, UnitPrice, Discount)
 
-# Compute the correlation matrix
-correlation_matrix <- cor(numeric_data, use = "complete.obs")  # Use complete observations
-print("Correlation Matrix:")
-print(correlation_matrix)
-
-# Visualize the correlation matrix with a heatmap
-library(corrplot)
-corrplot(correlation_matrix, method = "color", type = "upper", 
-         tl.col = "black", tl.srt = 45, addCoef.col = "black",
-         title = "Correlation Heatmap", mar = c(0, 0, 1, 0))
-
-```
 
 
 
