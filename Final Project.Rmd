@@ -484,16 +484,8 @@ sales_data <- sales_data %>%
   left_join(customer_data, by = "CustomerID")
 ```
 
-We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data.
 ```{r}
-set.seed(123)
-train_indices <- sample(1:nrow(sales_data), 0.7 * nrow(sales_data))
-train_data <- sales_data[train_indices, ]
-test_data <- sales_data[-train_indices, ]
-```
-
-```{r}
-cor_matrix <- cor(train_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
+cor_matrix <- cor(sales_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
 
 corrplot(
   cor_matrix, 
@@ -503,43 +495,48 @@ corrplot(
   tl.col = "black",  
   col = colorRampPalette(c("red", "white", "purple"))(200))
 ```
+
 The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows **negligible correlation** with **total quantity sold** and **no correlation** with **total sales revenue**, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other strategies to optimize revenue.
+
+We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data.
+```{r}
+set.seed(123)
+train_indices1 <- sample(1:nrow(sales_data), 0.7 * nrow(sales_data))
+train_data1 <- sales_data[train_indices1, ]
+test_data1 <- sales_data[-train_indices1, ]
+```
 
 After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, PaymentMethod and total_quantity_sold as predictors of total_sales_revenue. 
 ```{r}
 lm_sales_model <- lm(
   total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,
-  data = train_data)
+  data = train_data1)
 
 summary(lm_sales_model)
 ```
-We evaluate how well our linear regression model is performing in predicting total sales revenue based on certain variables. 
-```{r}
-predictions <- predict(lm_sales_model, test_data)
-test_data$predicted_sales <- predictions
-
-comparison <- data.frame(Actual = test_data$total_sales_revenue,
-  Predicted = test_data$predicted_sales)
-
-head(comparison, 10)
-```
+We evaluate to asses how well our linear regression model is performing. 
 
 ```{r}
-residuals <- test_data$total_sales_revenue - predictions
+fitted_values <- lm_sales_model$fitted.values
+residuals <- train_data1$total_sales_revenue - fitted_values
 
 MAE <- mean(abs(residuals))
-
 RMSE <- sqrt(mean(residuals^2))
 
-SS_total <- sum((test_data$total_sales_revenue - mean(test_data$total_sales_revenue))^2)
+SS_total <- sum((train_data1$total_sales_revenue - mean(train_data1$total_sales_revenue))^2)
 SS_residual <- sum(residuals^2)
 R_squared <- 1 - (SS_residual / SS_total)
+
+n <- nrow(train_data1)  
+p <- length(coef(lm_sales_model)) - 1  
+Adjusted_R_squared <- 1 - ((1 - R_squared) * (n - 1)) / (n - p - 1)
 
 cat("MAE:", MAE, "\n")
 cat("RMSE:", RMSE, "\n")
 cat("R-squared:", R_squared, "\n")
+cat("Adjusted R-squared:", Adjusted_R_squared, "\n")
 ```
-The model's evaluation metrics suggest moderate performance in predicting total sales revenue. The **R-squared** value of 0.428 indicates that about 43% of the variance in sales revenue is explained by the model, meaning there is room for improvement. The **MAE** of 621.52 suggests that, on average, the model's predictions are off by around 621 units, while the **RMSE** of 826.14 indicates that larger prediction errors are more significant. Overall, the model provides some useful insights, but its accuracy could be improved by adding more predictors or trying different modeling approaches.
+The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 618.35 suggests that, on average, the model's predictions deviate from actual sales revenue by **618.35 units**. The **RMSE** of 823.68 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.
 
 Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data. 
 
@@ -571,34 +568,35 @@ The feature importance plot shows that **total_quantity_sold** is the most signi
 ```{r}
 fancyRpartPlot(regression_tree)
 ```
+
 The regression tree **predicts outcomes** based on the feature **total_quantity_sold**. The root node splits at total_quantity_sold < 25, with further splits refining the predictions based on smaller thresholds. Each leaf node represents the predicted value and its corresponding percentage of data, showing how sales are grouped based on total_quantity_sold.
 
 ```{r}
-tree_predictions <- predict(regression_tree, test_data)
-test_data$predicted_sales_tree <- tree_predictions
+residuals_tree <- test_data1$total_sales_revenue - predict(regression_tree, test_data1)
 
-comparison_tree <- data.frame(Actual = test_data$total_sales_revenue,
-  Predicted = test_data$predicted_sales_tree)
+MAE_tree <- mean(abs(residuals_tree))
+RMSE_tree <- sqrt(mean(residuals_tree^2))
 
-head(comparison_tree, 10)
+SS_total_tree <- sum((test_data1$total_sales_revenue - mean(test_data1$total_sales_revenue))^2)
+SS_residual_tree <- sum(residuals_tree^2)
+R_squared_tree <- 1 - (SS_residual_tree / SS_total_tree)
+
+n <- nrow(test_data1)  # number of data points
+p <- length(coef(regression_tree))  # number of predictors
+Adjusted_R_squared_tree <- 1 - ((1 - R_squared_tree) * (n - 1)) / (n - p - 1)
+
+cat("MAE (Tree):", MAE_tree, "\n")
+cat("RMSE (Tree):", RMSE_tree, "\n")
+cat("R-squared (Tree):", R_squared_tree, "\n")
+cat("Adjusted R-squared (Tree):", Adjusted_R_squared_tree, "\n")
 ```
-
-```{r}
-mae_value <- mae(comparison_tree$Actual, comparison_tree$Predicted)
-rmse_value <- rmse(comparison_tree$Actual, comparison_tree$Predicted)
-mape_value <- mape(comparison_tree$Actual, comparison_tree$Predicted)
-
-cat("MAE:", mae_value, "\nRMSE:", rmse_value, "\nMAPE:", mape_value)
-```
-The tree struggles with accurately predicting extreme values or variations in the data.
+The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.415 indicates that approximately **41.5% of the variance** in sales revenue is explained by the regression tree model, leaving a significant portion of variability unexplained. The **Adjusted R-squared** value of 0.415 is consistent with the R-squared, indicating that the model’s explanatory power remains similar even after adjusting for the number of predictors. The **MAE** of 631.92 suggests that, on average, the model’s predictions deviate from actual sales revenue by **631.92 units**. The **RMSE** of 830.03 shows that larger prediction errors are more significant, with the model tending to make larger underestimation or overestimation. Overall, while the model provides some insight into the factors driving sales revenue, its prediction accuracy can still be improved by adding more relevant features or trying other modeling approaches.
 
 ## Model 2 - Classification Tree and Logistic Regression
 
 **Which order characteristics significantly influence the likelihood of a sale occurring online versus in-store, and how can we use these factors to classify sales channels?**
 
 We build **Classification Tree** model to classify customers into predefined segments based on predictors like purchase frequency, product preferences, and payment methods.
- 
-We start to aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility.
 
 ```{r}
 customer_data <- cleaned_data %>%
@@ -650,12 +648,10 @@ corrplot(
   col = colorRampPalette(c("red", "white", "purple"))(200),
  mar = c(0, 0, 1, 0))
 ```
-The heatmap shows that `purchase_frequency` and `total_quantity` have a moderate positive correlation (0.37), indicating frequent purchasers tend to buy more items. Other variables, such as `avg_discount`, `preferred_payment`, and `preferred_category`, show weak or no linear correlations with others. This suggests `purchase_frequency` and `total_quantity` might be the most relevant predictors, while other features could contribute in nonlinear ways.
 
+The heatmap shows that **purchase_frequency** and **total_quantity** have a moderate positive correlation, indicating frequent purchasers tend to buy more items. Other variables, such as **avg_discount**, **preferred_payment**, and **preferred_category**, show weak or no linear correlations with others. This suggests **purchase_frequency** and **total_quantity** might be the most relevant predictors, while other features could contribute in nonlinear ways.
 
-
-
-We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
+We aggregate features by grouping CustomerID. Then we define the customer_segment variable based on total_spend and categorized customers into "Low," "Medium," and "High" segments. Next we convert and encode preferred_payment and preferred_category to numeric form for model compatibility. We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data. Then we apply the classification tree model.
 
 ```{r}
 set.seed(123)
@@ -679,7 +675,6 @@ fancyRpartPlot(classification_tree)
 
 The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
 
-
 ```{R}
 predictions <- predict(classification_tree, test_data, type = "class")
 test_data$predicted_segment <- predictions
@@ -689,25 +684,25 @@ test_data$predicted_segment <- predictions
 confusion_matrix <- table(Actual = test_data$customer_segment, Predicted = test_data$predicted_segment)
 print(confusion_matrix)
 ```
-This confusion matrix evaluates a classification model's performance. The diagonal values represent correct predictions, with the model performing best for the `Medium` class (1009 correct). Significant confusion exists between `High` and `Medium` classes, with many misclassifications (e.g., 304 `High` predicted as `Medium`). Improving feature representation or using a different model could enhance accuracy.
 
+This confusion matrix evaluates a classification model's performance. The diagonal values represent correct predictions, with the model performing best for the **Medium class** (1009 correct). Significant confusion exists between **High** and **Medium classes**, with many misclassifications (e.g., 304 High predicted as Medium). Improving feature representation or using a different model could enhance accuracy.
 
 ```{R}
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
 ```
-The classification tree model achieved an accuracy of **63.97%**, meaning it correctly predicted approximately 64% of the instances in the dataset. While this shows moderate performance, the model struggles with misclassifications, as seen in the confusion matrix, particularly between `High` and `Medium` categories. Further tuning, feature engineering, or trying alternative models may improve this result.
 
+The classification tree model achieved an accuracy of **63.97%**, meaning it correctly predicted approximately 64% of the instances in the dataset. While this shows moderate performance, the model struggles with misclassifications, as seen in the confusion matrix, particularly between `High` and `Medium` categories. Further tuning, feature engineering, or trying alternative models may improve this result.
 
 ```{r}
 predicted_probs <- predict(classification_tree, test_data, type = "prob")
 
-actual <- ifelse(test_data$customer_segment == "High", 1, 0) # Adjust for your "positive" class
+actual <- ifelse(test_data$customer_segment == "High", 1, 0)  
 predicted <- predicted_probs[, "High"] 
 
 thresholds <- seq(0, 1, by = 0.01)
-tpr <- c()  # True Positive Rate
-fpr <- c()  # False Positive Rate
+tpr <- c()  
+fpr <- c()  
 
 for (threshold in thresholds) {
   predicted_class <- ifelse(predicted >= threshold, 1, 0)
@@ -717,8 +712,8 @@ for (threshold in thresholds) {
   fn <- sum(predicted_class == 0 & actual == 1)
   tn <- sum(predicted_class == 0 & actual == 0)
   
-  tpr <- c(tpr, tp / (tp + fn)) # Sensitivity
-  fpr <- c(fpr, fp / (fp + tn)) # 1 - Specificity
+  tpr <- c(tpr, tp / (tp + fn)) 
+  fpr <- c(fpr, fp / (fp + tn))
 }
 
 plot(fpr, tpr, type = "l", col = "blue", lwd = 2, xlab = "False Positive Rate", ylab = "True Positive Rate",
@@ -728,9 +723,21 @@ abline(a = 0, b = 1, col = "red", lty = 2)
 auc <- sum((fpr[-1] - fpr[-length(fpr)]) * (tpr[-1] + tpr[-length(tpr)]) / 2)
 cat("AUC:", auc, "\n")
 ```
-The ROC curve evaluates the model's ability to classify "High" customer segments, with the blue line showing the trade-off between True Positive Rate (sensitivity) and False Positive Rate. The curve's proximity to the top-left corner indicates strong performance, significantly better than the random classifier (red dashed line). A higher AUC (Area Under the Curve) reflects better overall model accuracy in distinguishing "High" from non-"High" customers.
 
+The **ROC curve** evaluates the model's ability to classify "High" customer segments, with the blue line showing the trade-off between True Positive Rate (sensitivity) and False Positive Rate. The curve's proximity to the top-left corner indicates good classification performance, significantly better than the random classifier (red dashed line). A higher AUC (Area Under the Curve) reflects better overall model accuracy in distinguishing "High" from non-"High" customers.
 
+Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
+
+```{r}
+
+logistic_data <- cleaned_data %>%
+  mutate(
+    SalesChannel = ifelse(SalesChannel == "Online", 1, 0)  
+  ) %>%
+  select(
+    SalesChannel, CustomerID, Quantity, UnitPrice, Discount, OrderPriority, Country, PaymentMethod
+  )
+```
 
 We split the data into training and testing sets, with 70% of the data used for training. The model was then trained using Quantity, UnitPrice, Discount, OrderPriority, Country, and PaymentMethod as predictors. 
 
@@ -767,56 +774,18 @@ performance <- confusionMatrix(factor(test_data$predicted_channel), factor(test_
 accuracy <- performance$overall["Accuracy"]
 print(accuracy)
 ```
+
 The logistic regression model's accuracy is **49.86%**, meaning it correctly predicts the target class in about half of the cases. This suggests the model is only slightly better than random guessing for a multi-class classification problem. To improve performance, consider feature engineering, balancing the dataset, or experimenting with other models like decision trees or ensemble methods.
 
-
 ```{r}
-thresholds <- seq(0, 1, by = 0.01)
+predicted_probs_log <- predict(logistic_model, test_data, type = "response")
 
-# Initialize vectors to store TPR and FPR values for each threshold
-tpr <- numeric(length(thresholds))
-fpr <- numeric(length(thresholds))
+actual_log <- test_data$SalesChannel
 
-# Loop over each threshold to calculate TPR and FPR
-for (i in 1:length(thresholds)) {
-  threshold <- thresholds[i]
-  
-  # Predicted labels: 1 if predicted probability is greater than the threshold, else 0
-  predicted_labels <- ifelse(predicted_probabilities > threshold, 1, 0)
-  
-  # Create confusion matrix
-  confusion <- table(Predicted = predicted_labels, Actual = actual_values)
-  
-  # Ensure the confusion matrix has all the required values (TP, FP, FN, TN)
-  tp <- confusion["1", "1"]  # True Positive
-  tn <- confusion["0", "0"]  # True Negative
-  fp <- confusion["0", "1"]  # False Positive
-  fn <- confusion["1", "0"]  # False Negative
-
-  # If any value is missing, set it to 0
-  tp <- ifelse(is.na(tp), 0, tp)
-  tn <- ifelse(is.na(tn), 0, tn)
-  fp <- ifelse(is.na(fp), 0, fp)
-  fn <- ifelse(is.na(fn), 0, fn)
-
-  # Calculate True Positive Rate (TPR) = TP / (TP + FN), handling zero division
-  tpr[i] <- ifelse((tp + fn) != 0, tp / (tp + fn), 0)
-  
-  # Calculate False Positive Rate (FPR) = FP / (FP + TN), handling zero division
-  fpr[i] <- ifelse((fp + tn) != 0, fp / (fp + tn), 0)
-}
-
-# Plot the ROC curve
-plot(fpr, tpr, type = "l", col = "blue", lwd = 2,
-     xlab = "False Positive Rate", ylab = "True Positive Rate",
-     main = "Manual ROC Curve for Logistic Regression")
-
-# Calculate AUC using the trapezoidal rule
-auc_manual <- sum(diff(fpr) * (tpr[-1] + tpr[-length(tpr)]) / 2)
-
-# Output the AUC value
-print(paste("Manual AUC:", auc_manual))
-
+roc_log <- roc(actual_log, predicted_probs_log)
+plot(roc_log, col = "green", lwd = 2, main = "ROC Curve: Logistic Regression")
+abline(a = 0, b = 1, col = "red", lty = 2)
+cat("AUC for Logistic Regression:", auc(roc_log), "\n")
 ```
 
 
