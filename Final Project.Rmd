@@ -542,7 +542,7 @@ Since our target variable is total_sales_revenue, which is a continuous numerica
 
 ```{r}
 regression_tree <- rpart(
-  total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,data = train_data,method="anova")
+  total_sales_revenue ~ avg_discount + OrderPriority + Country + PaymentMethod + total_quantity_sold,data = train_data1,method="anova")
 summary(regression_tree)
 ```
 
@@ -719,9 +719,15 @@ for (threshold in thresholds) {
 plot(fpr, tpr, type = "l", col = "blue", lwd = 2, xlab = "False Positive Rate", ylab = "True Positive Rate",
      main = "ROC Curve")
 abline(a = 0, b = 1, col = "red", lty = 2) 
+```
+```{r}
+sortedindices = order(fpr)
+fpr = fpr[sortedindices]
+tpr = tpr[sortedindices]
 
-auc <- sum((fpr[-1] - fpr[-length(fpr)]) * (tpr[-1] + tpr[-length(tpr)]) / 2)
-cat("AUC:", auc, "\n")
+auc = sum((fpr[-1] - fpr[-length(fpr)]) * (tpr[-1] + tpr[-length(tpr)]) / 2)
+
+cat("AUC:",auc, "\n")
 ```
 
 The **ROC curve** evaluates the model's ability to classify "High" customer segments, with the blue line showing the trade-off between True Positive Rate (sensitivity) and False Positive Rate. The curve's proximity to the top-left corner indicates good classification performance, significantly better than the random classifier (red dashed line). A higher AUC (Area Under the Curve) reflects better overall model accuracy in distinguishing "High" from non-"High" customers.
@@ -778,18 +784,18 @@ print(accuracy)
 The logistic regression model's accuracy is **49.86%**, meaning it correctly predicts the target class in about half of the cases. This suggests the model is only slightly better than random guessing for a multi-class classification problem. To improve performance, consider feature engineering, balancing the dataset, or experimenting with other models like decision trees or ensemble methods.
 
 ```{r}
-predicted_probs_log <- predict(logistic_model, test_data, type = "response")
+predicted_probs = predict(logistic_model, test_data, type = "response")
 
-actual_log <- test_data$SalesChannel
+roc_curve= roc(test_data$SalesChannel, predicted_probabilities)
 
-roc_log <- roc(actual_log, predicted_probs_log)
-plot(roc_log, col = "green", lwd = 2, main = "ROC Curve: Logistic Regression")
+plot(roc_curve, col = "blue", lwd = 2, main = "ROC Curve")
 abline(a = 0, b = 1, col = "red", lty = 2)
-cat("AUC for Logistic Regression:", auc(roc_log), "\n")
 ```
 
-
-
+```{r}
+auc_value = auc(roc_curve)
+cat("AUC:", auc_value, "\n")
+```
 
 
 
