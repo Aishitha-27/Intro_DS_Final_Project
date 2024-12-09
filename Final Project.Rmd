@@ -716,6 +716,38 @@ cat("AUC:",auc, "\n")
 
 The **ROC curve** evaluates the model's ability to classify "High" customer segments, with the blue line showing the trade-off between True Positive Rate (sensitivity) and False Positive Rate. The curve's proximity to the top-left corner indicates good classification performance, significantly better than the random classifier (red dashed line). A higher AUC (Area Under the Curve) reflects better overall model accuracy in distinguishing "High" from non-"High" customers.
 
+
+
+Feature importance
+
+```{r}
+# Extract feature importance from the model
+feature_importance <- classification_tree$variable.importance
+
+# Sort feature importance in descending order
+sorted_importance <- sort(feature_importance, decreasing = TRUE)
+
+# Create a data frame for plotting
+importance_df <- data.frame(
+  Feature = names(sorted_importance),
+  Importance = sorted_importance
+)
+# Load ggplot2 library
+library(ggplot2)
+
+# Create the feature importance plot
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Feature Importance in Classification Tree",
+    x = "Features",
+    y = "Importance"
+  ) +
+  theme_minimal()
+```
+
+
 Next we build **Logistic Regression** model to predict whether a sale occurs online or in-store, focusing on order characteristics. To prepare the dataset, we encoded the sales channel as a binary variable (SalesChannel), where “Online” was represented as 1 and “In-store” as 0. Key predictors like quantity, unit price, discount, order priority, country, and payment method were selected, ensuring that categorical variables were converted to factors for compatibility with the model.
 
 ```{r}
@@ -810,8 +842,43 @@ cat("AUC:", auc_value, "\n")
 ```
 An AUC of 0.4995 indicates that the model's ability to distinguish between classes is nearly equivalent to random guessing. This suggests that the model is not effectively learning patterns from the data and requires improvement through better feature selection, data preprocessing, or model optimization.
 
+```{r}
+# Extract coefficients from the model
+coefficients <- summary(logistic_model)$coefficients
+
+# Calculate absolute values of coefficients for feature importance
+feature_importance <- abs(coefficients[, "Estimate"])
+
+# Exclude the intercept
+feature_importance <- feature_importance[-1]
+
+# Create a data frame for visualization
+importance_df <- data.frame(
+  Feature = names(feature_importance),
+  Importance = feature_importance
+)
+
+# Order by importance
+importance_df <- importance_df[order(importance_df$Importance, decreasing = TRUE), ]
+
+# Plot the feature importance
+library(ggplot2)
+
+ggplot(importance_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Feature Importance - Logistic Regression",
+    x = "Features",
+    y = "Absolute Coefficient Value"
+  ) +
+  theme_minimal()
+```
+The Logistic Regression model highlights Order Priority as the critical factor in determining sales channels. 
 
 
+The Classification Tree effectively segments customers, with Total Quantity being the most influential feature for predicting customer value tiers.
+The Logistic Regression model highlights Order Priority as the critical factor in determining sales channels. However, its accuracy suggests room for significant improvement through enhanced modeling techniques.
 
 
 
