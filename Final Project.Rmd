@@ -756,13 +756,36 @@ predicted_probabilities <- predict(logistic_model, newdata = test_data, type = "
 predicted_class <- ifelse(predicted_probabilities > 0.5, 1, 0)
 
 test_data$predicted_sales_channel <- predicted_class
+```
 
+
+```{r}
+#Correlation Plot
+
+# Select only numerical columns
+numeric_columns <- logistic_data %>%
+  select(Quantity, UnitPrice, Discount, SalesChannel)
+
+# Compute the correlation matrix
+correlation_matrix <- cor(numeric_columns)
+
+# Plot the correlation matrix
+corrplot(correlation_matrix, method = "square", type = "upper", 
+         tl.col = "black", tl.srt = 45, addCoef.col = "black", 
+         col = colorRampPalette(c("blue", "white", "purple"))(200))
+
+```
+This heatmap shows the correlation matrix for the dataset, where all variables (`Quantity`, `UnitPrice`, `Discount`, and `SalesChannel`) exhibit very weak or no linear relationships with each other (correlations close to 0). This indicates that the predictors are largely independent, which is favorable for regression modeling.
+
+```{r}
 confusion_matrix2 <- confusionMatrix(
   data = as.factor(test_data$predicted_sales_channel),  
   reference = as.factor(test_data$SalesChannel))
 
 print(confusion_matrix2)
 ```
+
+
 ```{r}
 accuracy <- confusion_matrix2$overall["Accuracy"]
 cat("Accuracy:", accuracy, "\n")
@@ -779,12 +802,13 @@ roc_curve= roc(test_data$SalesChannel, predicted_probabilities)
 plot(roc_curve, col = "blue", lwd = 2, main = "ROC Curve")
 abline(a = 0, b = 1, col = "red", lty = 2)
 ```
+The poor ROC curve likely results from factors such as weak feature relevance to the target variable, data imbalance, or model underfitting. While the correlation plot shows low multicollinearity, it doesn't directly cause poor performance but may indicate weak predictors in the data.
 
 ```{r}
 auc_value = auc(roc_curve)
 cat("AUC:", auc_value, "\n")
 ```
-
+An AUC of 0.4995 indicates that the model's ability to distinguish between classes is nearly equivalent to random guessing. This suggests that the model is not effectively learning patterns from the data and requires improvement through better feature selection, data preprocessing, or model optimization.
 
 
 
