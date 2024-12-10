@@ -389,7 +389,6 @@ ggplot(product_preferences, aes(x = Description, y = TotalSales, fill = Country)
     axis.text.x = element_text(angle = 45, hjust = 1),
     plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
-
 # Hypothesis Testing
 
 In an analysis, a hypothesis is a preliminary assumption or prediction based on existing knowledge, which guides exploration and testing. This testing is typically done through statistical methods such as t-tests for mean comparisons or chi-square tests for categorical data relationships, yielding p-values that indicate whether observed patterns are statistically significant.**[7]**
@@ -501,7 +500,62 @@ customer_data <- cleaned_data %>%
 sales_data <- sales_data %>%
   left_join(customer_data, by = "CustomerID")
 ```
+We look into distribution of data points bcz we want to understand the frequency of of data points across intervals and compare the observed distribution of data to a theoretical distribution(why?)
 
+**Total Sales Revenue**
+```{r}
+ggplot(sales_data, aes(x = total_sales_revenue)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+  geom_density(color = "red", size = 1) +
+  ggtitle("Distribution of Total Sales Revenue") +
+  xlab("Total Sales Revenue") +
+  ylab("Density") +
+  theme_minimal()
+
+qqnorm(sales_data$total_sales_revenue, main = "Q-Q Plot of Total Sales Revenue")
+qqline(sales_data$total_sales_revenue, col = "red")
+```
+
+The data is highly right-skewed suggesting that most orders have low total sales revenue, with a few outliers having significantly higher revenue. The heavy skewness is evident as the points deviate significantly from the straight line at the tails. This indicates the data is not normally distributed.
+
+Given the non-normality in total_sales_revenue, we consider a log transformation to reduce skewness and stabilize variance (homoscedasticity).
+```{r}
+sales_data <- sales_data %>%
+  mutate(
+    log_total_sales_revenue = log1p(total_sales_revenue))
+```
+
+**Average Discount**
+```{r}
+ggplot(sales_data, aes(x = avg_discount)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+  geom_density(color = "red", size = 1) +
+  ggtitle("Distribution of Average Discount") +
+  xlab("Average Discount") +
+  ylab("Density") +
+  theme_minimal()
+
+qqnorm(sales_data$avg_discount, main = "Q-Q Plot of Average Discount")
+qqline(sales_data$avg_discount, col = "red")
+```
+
+The distribution appears uniform rather than normal, with similar frequencies across discount levels and there is no alignment with the normal distribution line, confirming the data is not normally distributed.
+
+**Total Qauntity Sold**
+```{r}
+ggplot(sales_data, aes(x = total_quantity_sold)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
+  geom_density(color = "red", size = 1) +
+  ggtitle("Distribution of Total Quantity Sold") +
+  xlab("Total Quantity Sold") +
+  ylab("Density") +
+  theme_minimal()
+
+qqnorm(sales_data$total_quantity_sold, main = "Q-Q Plot of Total Quantity Sold")
+qqline(sales_data$total_quantity_sold, col = "red")
+```
+
+This distribution seems uniform too. However, there’s a slight tendency toward higher frequencies at lower quantity levels.(write more)
 ```{r}
 cor_matrix <- cor(sales_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
 
