@@ -35,6 +35,7 @@ library(Metrics)
 library(rattle)
 library(corrplot)
 library(pROC)
+library(car)
 ```
 
 # Introduction
@@ -507,20 +508,19 @@ test_data1 <- sales_data[-train_indices1, ]
 ```
 
 After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, PaymentMethod and total_quantity_sold as predictors of total_sales_revenue. 
+
 ```{r}
 lm_sales_model <- lm(
-  total_sales_revenue ~ avg_discount + OrderPriority + PaymentMethod + total_quantity_sold,
-  data = train_data1)
+  total_sales_revenue ~ avg_discount + total_quantity_sold, data = train_data1)
 
 summary(lm_sales_model)
 ```
+
 ```{r}
-lm_sales_model$coefficients
+vif(lm_sales_model)
 ```
 
-
 We evaluate to asses how well our linear regression model is performing. 
-
 ```{r}
 fitted_values <- lm_sales_model$fitted.values
 residuals <- train_data1$total_sales_revenue - fitted_values
@@ -543,11 +543,11 @@ cat("Adjusted R-squared:", Adjusted_R_squared, "\n")
 ```
 The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 618.35 suggests that, on average, the model's predictions deviate from actual sales revenue by **618.35 units**. The **RMSE** of 823.68 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.
 
-Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to explore non-linear relationships in the data. 
+Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to identify non-linear patterns in the data that might not be apparent from a linear model.
 
 ```{r}
 regression_tree <- rpart(
-  total_sales_revenue ~ avg_discount + OrderPriority + PaymentMethod + total_quantity_sold,data = train_data1,method="anova")
+  total_sales_revenue ~ avg_discount + total_quantity_sold,data = train_data1,method="anova")
 summary(regression_tree)
 ```
 
@@ -580,7 +580,7 @@ The model's evaluation metrics suggest **moderate performance** in predicting to
 
 ## Model 2 - Classification Tree and Logistic Regression
 
-**Which order characteristics significantly influence the likelihood of a sale occurring online versus in-store, and how can we use these factors to classify sales channels?**
+**How can we predict customer behavior using purchase characteristics, and which predictors are most influential in shaping these behaviors?**
 
 We build **Classification Tree** model to classify customers into predefined segments based on predictors like purchase frequency, product preferences, and payment methods.
 
@@ -775,9 +775,6 @@ logistic_model <- glm(
 )
 
 summary(logistic_model)
-```
-```{r}
-logistic_model$coefficients
 ```
 
 From the model output, we find that OrderPriority is the only statistically significant predictor with **p-value = 0.0348**, which is **less** than the typical significance level of 0.05. This indicates that **OrderPriority** plays a **key role** in determining whether a sale occurs online or in-store. Other factors, such as Quantity, UnitPrice, Discount, Country, and PaymentMethod, were not found to be significant predictors in this case, as their p-values are greater than 0.05.
