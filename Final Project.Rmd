@@ -78,7 +78,7 @@ The SMART framework was popularized by George T. Doran in a 1981 paper in Manage
 
 **Relevant:** The objective should make sense and fit the purpose 
 
-**Time-bound:** The objective should include a timeline for expected results **[2]**
+**Time-bound:** The objective should include a timeline for expected results **[1]**
 
 We have leverage the understanding of what a SMART question is and poured it into the following questions to be answered as part of our analysis;
 
@@ -97,9 +97,9 @@ We have leverage the understanding of what a SMART question is and poured it int
 
 In the scholarly realm of data analysis, Exploratory Data Analysis (EDA) stands as a pivotal phase, akin to the preliminary investigations conducted by a seasoned researcher before embarking on a comprehensive study. Picture this phase as the initial survey of an unexplored scientific landscape, where the analyst endeavors to unearth latent patterns, identify anomalies, test hypotheses, and validate assumptions through a meticulous examination of summary statistics and graphical representations.
 
-Exploratory Data Analysis refers to the critical process of performing initial investigations on data so as to discover patterns,to spot anomalies,to test hypothesis and to check assumptions with the help of summary statistics and graphical representations.**[3]**
+Exploratory Data Analysis refers to the critical process of performing initial investigations on data so as to discover patterns,to spot anomalies,to test hypothesis and to check assumptions with the help of summary statistics and graphical representations.**[2]**
 
-The main purpose of EDA is to help look at data before making any assumptions. It can help identify obvious errors, as well as better understand patterns within the data, detect outliers or anomalous events, find interesting relations among the variables.**[4]**
+The main purpose of EDA is to help look at data before making any assumptions. It can help identify obvious errors, as well as better understand patterns within the data, detect outliers or anomalous events, find interesting relations among the variables.**[3]**
 
 Moreover, EDA validates assumptions, a process analogous to literature review and theoretical grounding in academic research. It ensures that the initial assumptions made about the dataset withstand scholarly scrutiny, providing a robust foundation for subsequent analyses.
 
@@ -152,7 +152,7 @@ dim(data_reduced)
 
 # Detecting and Removing Outliers
 
-An outlier is a data point that significantly deviates from the majority of other data points in a dataset, and in Exploratory Data Analysis (EDA), outliers can significantly affect the interpretation of data by skewing visualizations, impacting statistical measures like the mean, and potentially misleading conclusions drawn from the analysis if not properly identified and handled. Outliers can be unusually high or low compared to the majority of the data points.**[5]**
+An outlier is a data point that significantly deviates from the majority of other data points in a dataset, and in Exploratory Data Analysis (EDA), outliers can significantly affect the interpretation of data by skewing visualizations, impacting statistical measures like the mean, and potentially misleading conclusions drawn from the analysis if not properly identified and handled. Outliers can be unusually high or low compared to the majority of the data points.**[4]**
 
 In this analysis, we specifically focus on identifying outliers in the age groups of officers and subjects. By examining these outliers, we aim to ensure that our findings are robust and representative of the overall dataset, minimizing any undue influence from extreme values. This process strengthens the validity of our analysis by providing a more accurate portrayal of the data trends and relationships.
 
@@ -244,7 +244,7 @@ str(cleaned_data)
 
 As part of our analysis, we first pre-processed the data to ensure its integrity and completeness, establishing a reliable foundation for subsequent analysis and visualization. With a clean and well-structured dataset, we are now prepared to delve into data visualization and exploration to uncover meaningful patterns and insights.
 
-Data visualization is a crucial element of Exploratory Data Analysis (EDA), offering a way for data analysts to engage visually with the data, which aids in understanding the relationships between variables and identifying potential trends. By creating visual representations, we could effectively interpret the dataset’s underlying structure, facilitating a more intuitive and insightful analysis.**[6]**
+Data visualization is a crucial element of Exploratory Data Analysis (EDA), offering a way for data analysts to engage visually with the data, which aids in understanding the relationships between variables and identifying potential trends. By creating visual representations, we could effectively interpret the dataset’s underlying structure, facilitating a more intuitive and insightful analysis.**[5]**
 
 #Total Sales by Country
 
@@ -391,7 +391,7 @@ ggplot(product_preferences, aes(x = Description, y = TotalSales, fill = Country)
 ```
 # Hypothesis Testing
 
-In an analysis, a hypothesis is a preliminary assumption or prediction based on existing knowledge, which guides exploration and testing. This testing is typically done through statistical methods such as t-tests for mean comparisons or chi-square tests for categorical data relationships, yielding p-values that indicate whether observed patterns are statistically significant.**[7]**
+In an analysis, a hypothesis is a preliminary assumption or prediction based on existing knowledge, which guides exploration and testing. This testing is typically done through statistical methods such as t-tests for mean comparisons or chi-square tests for categorical data relationships, yielding p-values that indicate whether observed patterns are statistically significant.**[6]**
 
 Hypotheses serve as focal points in EDA, helping to frame specific questions and streamline investigation by directing attention toward the most relevant variables and relationships. Through hypothesis testing, assumptions are rigorously evaluated, allowing for meaningful interpretation and robust insights that align with the project’s objectives. By narrowing the focus, hypotheses provide structure and efficiency to EDA, connecting exploratory analysis with deeper inferential statistics or predictive modeling. This approach ensures that findings are not only descriptive but also actionable, enhancing decision-making and potentially shaping strategic direction.
 
@@ -481,8 +481,6 @@ The **p-value** is **greater** than **0.05**, hence we **fail to reject the null
 
 **What factors influence total sales revenue, and how can we predict it based on product characteristics, customer demographics and order details?**
 
-We build **Linear Regression** to understand the significant impact of several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region on total sales revenue.
-
 ```{r}
 sales_data <- cleaned_data %>%
   group_by(StockCode, OrderPriority, CustomerID) %>%
@@ -500,7 +498,11 @@ customer_data <- cleaned_data %>%
 sales_data <- sales_data %>%
   left_join(customer_data, by = "CustomerID")
 ```
-We look into distribution of data points bcz we want to understand the frequency of of data points across intervals and compare the observed distribution of data to a theoretical distribution(why?)
+We analyze the distribution of data points to understand the frequency of occurrences across intervals and compare the observed distribution to a theoretical distribution. This comparison helps assess whether the data aligns with expected patterns, such as a normal distribution, which is a foundational assumption for many statistical methods. Deviations from these theoretical distributions can highlight issues like skewness, outliers, or variability that require adjustments or transformations.
+
+Assessing normality is critical because many statistical methods and tests assume data follows a normal distribution. Comparing observed distributions to theoretical ones, such as the normal distribution, helps verify these assumptions. If data deviates significantly, as seen in the Q-Q plots for sales revenue and discounts, transformations (e.g., logarithmic) can reduce skewness and stabilize variance, making data suitable for modeling and hypothesis testing.
+
+Finally, understanding distributions supports informed decision-making in model selection and analysis. For example, non-normal data may require alternative approaches, such as generalized linear models or non-parametric methods. This ensures that the statistical methods applied are appropriate and lead to meaningful and reliable insights.
 
 **Total Sales Revenue**
 ```{r}
@@ -540,6 +542,9 @@ qqline(sales_data$avg_discount, col = "red")
 ```
 
 The distribution appears uniform rather than normal, with similar frequencies across discount levels and there is no alignment with the normal distribution line, confirming the data is not normally distributed.
+The Q-Q plot for average discount shows significant deviations from the normal distribution line, especially at the tails, confirming non-normality. The stepped pattern suggests a uniform distribution with values evenly spread across the range. This lack of clustering and symmetry indicates that statistical methods assuming normality may not be suitable, highlighting the need for non-parametric approaches.
+
+The uniform distribution of average discounts suggests there is no dominant discount level, with similar frequencies across the range. This pattern could indicate consistent discounting practices or policies without significant variations. The lack of alignment with the normal distribution emphasizes the need to explore alternative analytical methods that do not rely on assumptions of normality, ensuring robust and accurate insights into discount patterns.
 
 **Total Qauntity Sold**
 ```{r}
@@ -558,7 +563,6 @@ qqline(sales_data$total_quantity_sold, col = "red")
 This distribution seems uniform too. However, there’s a slight tendency toward higher frequencies at lower quantity levels.(write more)
 ```{r}
 cor_matrix <- cor(sales_data %>% select(avg_discount, total_sales_revenue, total_quantity_sold))
-
 corrplot(
   cor_matrix, 
   method = "color",  
@@ -567,7 +571,7 @@ corrplot(
   tl.col = "black",  
   col = colorRampPalette(c("red", "white", "purple"))(200))
 ```
-
+We build **Linear Regression** to understand the significant impact of several potential explanatory variables like discounts, quantity sold, order priority, payment methods, and customer region on total sales revenue.
 The heatmap reveals that **total quantity sold** has a strong positive correlation (0.65) with **total sales revenue**, indicating it is a key driver of revenue. In contrast, **average discount** shows **negligible correlation** with **total quantity sold** and **no correlation** with **total sales revenue**, suggesting discounts may not significantly impact sales performance. This highlights the need to focus on other strategies to optimize revenue.
 
 We split the data into train and test set where we set 70% of data to be randomly selected as train data and the rest as test data.
@@ -600,7 +604,7 @@ All predictors in the model had VIF values within acceptable ranges (below 5), i
 vif(lm_sales_model)
 ```
 
-We evaluate to asses how well our linear regression model is performing. 
+We evaluate to asses how well our linear regression model is performing.Model evaluation is the process of assessing how well a predictive model performs in capturing patterns and making accurate predictions on the given data. In this project, model evaluation is a critical step to assess how well our linear regression model predicts the outcomes and fits the data. By evaluating the model, we can determine its performance in capturing the relationships between the dependent and independent variables. Metrics such as R-squared and Mean Squared Error (MSE) will help us understand the model’s accuracy and goodness-of-fit. This evaluation also allows us to identify potential issues, such as overfitting or underfitting, and refine the model by improving features or adjusting parameters. Ultimately, the evaluation ensures that our regression model is reliable and effective for making predictions or drawing insights in the context of this analysis.
 ```{r}
 fitted_values <- lm_sales_model$fitted.values
 residuals <- train_data1$total_sales_revenue - fitted_values
@@ -817,7 +821,13 @@ The **ROC curve** evaluates the model's ability to classify "High" customer segm
 
 
 
-Feature importance
+#Feature importance
+
+Feature importance measures how much each feature contributes to the predictive power of a model. The visualization above demonstrates the importance of features in a classification tree model. The bar chart ranks features by their importance, with total_quantity having the highest importance by a significant margin compared to other features.
+
+The dominance of total_quantity suggests it plays a critical role in determining the model’s decisions, indicating that variations in this feature strongly influence the outcome. In contrast, features like purchase_frequency, avg_discount, and preferred_category have minimal contributions, suggesting they have a weaker relationship with the target variable or are less useful for splitting the data in the tree.
+
+This analysis highlights the importance of focusing on key features, such as total_quantity, when interpreting the model’s results or refining the dataset for improved performance. Understanding feature importance also guides feature selection and dimensionality reduction efforts in future iterations of the analysis.
 
 ```{r}
 # Extract feature importance from the model
@@ -983,5 +993,38 @@ The Classification Tree effectively segments customers, with Total Quantity bein
 The Logistic Regression model highlights Order Priority as the critical factor in determining sales channels. However, its accuracy suggests room for significant improvement through enhanced modeling techniques.
 
 The feature importance analysis reveals OrderPriority (Medium and Low) and Discount as the most influential factors in determining sales channels, while payment methods and item-specific features like Quantity and UnitPrice have minimal impact. This suggests a need to optimize order prioritization and discount strategies to influence customer behavior. To improve the model’s accuracy, incorporating additional variables or exploring non-linear models could provide deeper insights into sales channel preferences.
+
+
+#Conclusion 
+
+The analysis conducted provided valuable insights into the dynamics of online sales and customer behavior, addressing the SMART questions posed for this project. The findings revealed clear patterns in sales performance, customer segmentation, and operational dynamics.
+
+*Sales Patterns:* Total quantity sold emerged as the most significant driver of sales revenue, while discounts showed minimal impact, suggesting a focus on strategies to boost sales volume. Regional and product-based trends emphasized the importance of understanding customer preferences for targeted marketing efforts.
+
+*Return Dynamics:* Analysis of return patterns revealed no significant differences across product categories. However, improving return policies or product quality could enhance customer satisfaction and reduce return rates.
+
+*Customer Segmentation:* Classification models highlighted clear customer segments, with high spenders strongly associated with larger quantities purchased. The segmentation offered actionable insights for prioritizing marketing strategies toward high-value customers.
+
+*Operational Insights:* Order prioritization was identified as a significant factor influencing sales channels (online vs. in-store), though the logistic regression model’s low accuracy indicates a need for additional features like customer demographics or seasonal trends to better understand these dynamics.
+
+*Feature Importance:* Across all models, total quantity sold consistently emerged as the most impactful factor, with operational variables like order priority showing limited but notable influence on outcomes.
+
+*Note:* While the findings provide meaningful insights, the observational nature of the data limits our ability to infer causality. There may be unmeasured variables influencing the patterns observed, highlighting the need for further investigation.
+
+
+
+#References
+
+[1] Setting goals and developing specific, measurable, achievable, relevant, and time-bound objectives; https://www.samhsa.gov/sites/default/files/nc-smart-goals-fact-sheet.pdf
+
+[2] Prasad Patil, Published in Towards Data Science (Mar 23,2018), Retrieved on Oct 31,2023; https://towardsdatascience.com/exploratory-data-analysis-8fc1cb20fd15
+
+[3] What is exploratory data analysis?, IBM, Retrieved on Oct 31,2023; https://www.ibm.com/topics/exploratory-data-analysis
+
+[4] Jain, A. (2024, October 19). What do you understand by EDA, Outliers, and Z Score? Medium. https://medium.com/@abhishekjainindore24/what-do-you-understand-by-eda-a634a734e762#:~:text=Exploratory%20Data%20Analysis%20(EDA)%20is,associated%20with%20Exploratory%20Data%20Analysis:
+
+[5] Codecademy Team, Exploratory Data Analysis: Data Visualization, Retrieved on Oct 31,2023; https://www.codecademy.com/article/eda-data-visualization
+
+[6] How do you formulate and test hypotheses based on your exploratory data analysis? (2023, August 25). https://www.linkedin.com/advice/1/how-do-you-formulate-test-hypotheses#:~:text=After%20exploratory%20data%20analysis%2C%20formulating,supporting%20or%20rejecting%20the%20hypothesis.
 
 
