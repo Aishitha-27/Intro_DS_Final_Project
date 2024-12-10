@@ -246,7 +246,9 @@ As part of our analysis, we first pre-processed the data to ensure its integrity
 
 Data visualization is a crucial element of Exploratory Data Analysis (EDA), offering a way for data analysts to engage visually with the data, which aids in understanding the relationships between variables and identifying potential trends. By creating visual representations, we could effectively interpret the dataset’s underlying structure, facilitating a more intuitive and insightful analysis.**[6]**
 
+#Total Sales by Country
 
+The bar plot visualizes total sales across countries, highlighting which regions contribute most to revenue. It provides actionable insights for regional sales strategies and market penetration opportunities.
 ```{r}
 cleaned_data$TotalSales <- cleaned_data$UnitPrice * cleaned_data$Quantity
 
@@ -266,6 +268,10 @@ ggplot(sales_by_country, aes(x = reorder(Country, TotalSales), y = TotalSales)) 
   theme_light()
 ```
 
+#Proportion of Return Statuses
+
+The pie chart depicts the proportion of return statuses, providing insight into the overall return rate and the distribution of returned versus non-returned items. This helps identify trends and potential areas to improve return policies.
+
 ```{r}
 return_status_counts <- cleaned_data %>%
   group_by(ReturnStatus) %>%
@@ -284,6 +290,9 @@ ggplot(return_status_counts, aes(x = "", y = Count, fill = ReturnStatus)) +
   theme_void() +
   theme(legend.title = element_blank())
 ```
+#Top 10 Products by Total Sales
+
+This bar chart shows the top 10 best-selling products, revealing which items drive the most revenue and are customer favorites. These insights can guide inventory decisions and marketing strategies.
 
 ```{r}
 top_products <- cleaned_data %>%
@@ -302,6 +311,9 @@ ggplot(top_products, aes(x = reorder(Description, TotalSales), y = TotalSales)) 
   ) +
   theme_minimal()
 ```
+#Stacked Sales by Category Over Time (Yearly)
+
+The stacked bar chart displays annual sales by category, illustrating trends in category performance over time and highlighting consistent or seasonal demand. It provides a clear view of category growth or decline year over year.
 
 ```{r}
 cleaned_data <- cleaned_data %>%
@@ -328,6 +340,9 @@ ggplot(category_sales_yearly, aes(x = Year, y = TotalSales, fill = Category)) +
   scale_y_continuous(labels = comma) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+#Most Returned and Not Returned Items
+
+The stacked bar chart identifies items with the highest returns versus those with consistent sales, helping to pinpoint products needing policy adjustments or quality improvements. It aids in understanding customer dissatisfaction with specific products.
 
 ```{r}
 
@@ -354,7 +369,9 @@ ggplot(sales_return_summary, aes(x = reorder(Description, TotalQuantity), y = To
     plot.title = element_text(hjust = 0.5, face = "bold")
   )
 ```
+#Product Preferences by Customer Type
 
+This stacked bar chart highlights how customer preferences for specific products vary by region, offering insights into regional demand and product popularity. It supports better regional marketing and product distribution planning.
 ```{r}
 product_preferences <- cleaned_data %>%
   group_by(Description, Country) %>%
@@ -379,7 +396,7 @@ In an analysis, a hypothesis is a preliminary assumption or prediction based on 
 
 Hypotheses serve as focal points in EDA, helping to frame specific questions and streamline investigation by directing attention toward the most relevant variables and relationships. Through hypothesis testing, assumptions are rigorously evaluated, allowing for meaningful interpretation and robust insights that align with the project’s objectives. By narrowing the focus, hypotheses provide structure and efficiency to EDA, connecting exploratory analysis with deeper inferential statistics or predictive modeling. This approach ensures that findings are not only descriptive but also actionable, enhancing decision-making and potentially shaping strategic direction.
 
-## Hypothsis 1
+## Hypothesis 1
 
 **Null Hypothesis (H₀)**: There is no significant association between the mode of payment and customer segmentation based on purchase frequency.
 
@@ -509,12 +526,21 @@ test_data1 <- sales_data[-train_indices1, ]
 
 After splitting the data into training and testing sets, we trained the model using avg_discount, OrderPriority, Country, PaymentMethod and total_quantity_sold as predictors of total_sales_revenue. 
 
+The correlation analysis highlighted that total quantity sold is a key driver of revenue, with a strong positive relationship to total sales revenue, while average discounts exhibited minimal impact. These findings indicate that strategies focused on increasing sales volume could be more effective than discount-driven approaches.
+
+The linear regression model identified significant predictors for sales revenue, with total quantity sold being the most impactful variable. The model was trained and tested to ensure robust evaluation, with results providing actionable insights into revenue optimization. The emphasis on quantity underscores the importance of demand generation efforts in revenue growth strategies.
+
+This model sets a foundation for understanding sales drivers and evaluating the impact of operational decisions, such as order prioritization and regional targeting, on total sales revenue.
 ```{r}
 lm_sales_model <- lm(
   total_sales_revenue ~ avg_discount + total_quantity_sold, data = train_data1)
 
 summary(lm_sales_model)
 ```
+
+To assess multicollinearity among the predictors in the linear regression model, the **Variance Inflation Factor (VIF)** was calculated. VIF measures how much the variance of a regression coefficient is inflated due to multicollinearity, which can obscure the individual effect of predictors on the dependent variable.
+
+All predictors in the model had VIF values within acceptable ranges (below 5), indicating no significant multicollinearity. This ensures that the coefficients are reliable and accurately represent the predictors’ impact on total sales revenue, reinforcing the model’s robustness and interpretability.
 
 ```{r}
 vif(lm_sales_model)
@@ -541,7 +567,9 @@ cat("RMSE:", RMSE, "\n")
 cat("R-squared:", R_squared, "\n")
 cat("Adjusted R-squared:", Adjusted_R_squared, "\n")
 ```
-The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 618.35 suggests that, on average, the model's predictions deviate from actual sales revenue by **618.35 units**. The **RMSE** of 823.68 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.
+The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 617.93 suggests that, on average, the model's predictions deviate from actual sales revenue by **617.93 units**. The **RMSE** of 824.23 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.
+
+To further assess the model, analyzing the residuals is essential to ensure they are normally distributed and exhibit no patterns, confirming the model’s assumptions. The moderate R-squared and high RMSE values suggest that additional variables, such as customer segmentation or seasonal trends, could improve the model’s explanatory power. Exploring non-linear models, interaction terms, or feature transformations may also enhance predictive accuracy. Validating the model on the test dataset and analyzing feature importance are logical next steps to refine the model and achieve better performance.
 
 Since our target variable is total_sales_revenue, which is a continuous numerical variable, we also build a **Regression Tree** to identify non-linear patterns in the data that might not be apparent from a linear model.
 
@@ -556,6 +584,8 @@ fancyRpartPlot(regression_tree)
 ```
 
 The regression tree **predicts outcomes** based on the feature **total_quantity_sold**. The root node splits at total_quantity_sold < 25, with further splits refining the predictions based on smaller thresholds. Each leaf node represents the predicted value and its corresponding percentage of data, showing how sales are grouped based on total_quantity_sold.
+
+The regression tree highlights total_quantity_sold as the primary driver of sales revenue, with splits identifying key thresholds that segment data into groups with similar patterns. This approach captures non-linear relationships, offering actionable insights into sales drivers and revenue optimization. Further pruning can enhance the tree’s interpretability and accuracy.
 
 ```{r}
 residuals_tree <- test_data1$total_sales_revenue - predict(regression_tree, test_data1)
@@ -618,7 +648,7 @@ customer_data$preferred_payment <- as.numeric(customer_data$preferred_payment)
 
 customer_data$preferred_category <- as.numeric(customer_data$preferred_category)
 ```
-
+In this model, we developed a classification tree and logistic regression to analyze customer behavior and predict sales channels. For the classification tree, data was aggregated by CustomerID to derive meaningful features, such as purchase frequency, total quantity purchased, total spending, average discount received, and preferred payment methods and product categories. Customers were segmented into three categories—Low, Medium, and High spenders—based on their total spending, using the 25th and 75th percentiles as thresholds. This segmentation allowed for targeted analysis of spending patterns. Categorical variables like preferred_payment and preferred_category were encoded numerically for model compatibility. The classification tree was trained to identify key factors influencing customer segments, enabling actionable insights into spending behavior and preferences. Additionally, logistic regression was used to predict the likelihood of choosing specific sales channels (online or in-store) based on purchase characteristics and demographic details, providing further understanding of customer behaviors.
 
 ```{r}
 cor_matrix <- cor(customer_data %>% 
@@ -654,12 +684,21 @@ classification_tree <- rpart(
 
 summary(classification_tree) 
 ```
+The classification tree model was designed to predict customer segments—Low, Medium, or High spenders—using behavioral and transactional features. To ensure robust evaluation, the dataset was divided into a training set (70%) and a testing set (30%). This approach allows the model to be trained on one subset of the data and validated on a separate subset, minimizing overfitting and ensuring generalizability.
+
+The model incorporates key predictors such as purchase frequency, total quantity purchased, average discount received, preferred payment method, and preferred product category. These features provide a comprehensive view of customer behavior, enabling the model to classify customers effectively into their respective spending categories.
+
+By training the classification tree on these variables, the model captures hierarchical relationships and identifies the most important factors driving customer segmentation.
 
 ```{r}
 fancyRpartPlot(classification_tree)
 ```
 
 The model performs best for **High** segment customers, with a high accuracy of **95.7%**, indicating that total_quantity is the strongest predictor for high-value customers. For **Medium** segment customers, the accuracy is still strong at **88.8%**, while the model has **80.8%** accuracy when predicting **Low** segment customers.
+
+The classification tree reveals that total_quantity is the most significant factor in predicting customer segments, with clear splits at key thresholds (e.g., 8.5, 28, and 39). These splits indicate distinct patterns in purchasing behavior across segments. The tree structure effectively segments customers into Low, Medium, and High spenders based on their purchasing behavior.
+
+The model’s accuracy is highest for the High spender segment, emphasizing its ability to identify high-value customers accurately. The performance for the Medium and Low spender segments, while slightly lower, still provides valuable insights into customer behaviors. This hierarchical approach to segmentation allows businesses to prioritize and target customers effectively based on their spending patterns.
 
 ```{r}
 predictions <- predict(classification_tree, test_data, type = "class")
@@ -671,13 +710,15 @@ confusion_matrix <- confusionMatrix(
 
 print(confusion_matrix)
 ```
+The confusion matrix shows the classification tree achieved an overall accuracy of 63.97%, with the highest sensitivity for the Medium segment (75.07%), followed by High (56.76%) and Low (49.64%). While the model performs well in identifying Medium customers, it struggles more with distinguishing High and Low segments, as indicated by their lower sensitivity and overlapping predictions. Further optimization could improve its balance and overall performance.
+
 
 ```{R}
 cat("Accuracy:", confusion_matrix$overall["Accuracy"], "\n")
 ```
 
 The classification tree model achieved an accuracy of **63.97%**, meaning it correctly predicted approximately 64% of the instances in the dataset. While this shows moderate performance, the model struggles with misclassifications, as seen in the confusion matrix, particularly between `High` and `Medium` categories. Further tuning, feature engineering, or trying alternative models may improve this result.
-
+The model’s moderate performance suggests room for improvement in distinguishing customer segments. Further refinement through feature selection, parameter tuning, or advanced models could help address the observed misclassifications and enhance predictive accuracy.
 ```{r}
 predicted_probs <- predict(classification_tree, test_data, type = "prob")
 
@@ -704,6 +745,10 @@ plot(fpr, tpr, type = "l", col = "blue", lwd = 2, xlab = "False Positive Rate", 
      main = "ROC Curve")
 abline(a = 0, b = 1, col = "red", lty = 2) 
 ```
+The ROC Curve gives us a clear picture of how well the classification tree identifies high-value customers (High segment). The blue line shows the model’s ability to correctly classify customers, with better performance indicated by the curve bending closer to the top-left corner. The red diagonal line represents random guessing, so the further the blue line is from this diagonal, the better the model is doing.
+
+This curve shows that the model is reasonably good at distinguishing high-value customers from others, but there’s still room for improvement. The visual makes it easier to understand where the model excels and where it might need adjustments to improve accuracy.
+
 ```{r}
 sortedindices = order(fpr)
 fpr = fpr[sortedindices]
@@ -779,6 +824,9 @@ summary(logistic_model)
 
 From the model output, we find that OrderPriority is the only statistically significant predictor with **p-value = 0.0348**, which is **less** than the typical significance level of 0.05. This indicates that **OrderPriority** plays a **key role** in determining whether a sale occurs online or in-store. Other factors, such as Quantity, UnitPrice, Discount, Country, and PaymentMethod, were not found to be significant predictors in this case, as their p-values are greater than 0.05.
 
+The logistic regression model suggests that OrderPriority has a notable influence on the likelihood of a sale occurring online or in-store, highlighting its importance in determining customer purchase behavior. The low residual deviance and minimal change from the null deviance indicate that while the model fits the data moderately well, there may be additional variables or interactions that could enhance its predictive power.
+
+To improve the model, further exploration of features such as customer demographics, seasonal trends, or marketing campaigns could provide deeper insights. Additionally, conducting feature engineering to create interaction terms or applying non-linear models may help capture relationships that the logistic regression model did not account for. Despite its limitations, the model offers valuable insights into how operational factors like order prioritization impact sales channels.
 ```{r}
 predicted_probabilities <- predict(logistic_model, newdata = test_data, type = "response")
 
@@ -813,6 +861,9 @@ confusion_matrix2 <- confusionMatrix(
 
 print(confusion_matrix2)
 ```
+
+The confusion matrix shows an accuracy of 50.38%, slightly better than random guessing, with high sensitivity (76.79%) for in-store sales (0) but low specificity (**24.08%) for online sales (1`). The kappa statistic (0.0087) reflects poor agreement, indicating the model struggles to differentiate between sales channels effectively. Improvements like adding features or balancing the data are needed to enhance performance.
+
 
 
 ```{r}
@@ -877,6 +928,6 @@ The Logistic Regression model highlights Order Priority as the critical factor i
 The Classification Tree effectively segments customers, with Total Quantity being the most influential feature for predicting customer value tiers.
 The Logistic Regression model highlights Order Priority as the critical factor in determining sales channels. However, its accuracy suggests room for significant improvement through enhanced modeling techniques.
 
-
+The feature importance analysis reveals OrderPriority (Medium and Low) and Discount as the most influential factors in determining sales channels, while payment methods and item-specific features like Quantity and UnitPrice have minimal impact. This suggests a need to optimize order prioritization and discount strategies to influence customer behavior. To improve the model’s accuracy, incorporating additional variables or exploring non-linear models could provide deeper insights into sales channel preferences.
 
 
