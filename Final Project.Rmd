@@ -500,7 +500,7 @@ sales_data <- sales_data %>%
 ```
 We analyze the distribution of data points to understand the frequency of occurrences across intervals and compare the observed distribution to a theoretical distribution. This comparison helps assess whether the data aligns with expected patterns, such as a normal distribution, which is a foundational assumption for many statistical methods. Deviations from these theoretical distributions can highlight issues like skewness, outliers, or variability that require adjustments or transformations.
 
-Assessing normality is critical because many statistical methods and tests assume data follows a normal distribution. Comparing observed distributions to theoretical ones, such as the normal distribution, helps verify these assumptions. If data deviates significantly, as seen in the Q-Q plots for sales revenue and discounts, transformations (e.g., logarithmic) can reduce skewness and stabilize variance, making data suitable for modeling and hypothesis testing.
+Assessing normality is critical because many statistical methods and tests assume data follows a normal distribution. Comparing observed distributions to theoretical ones, such as the normal distribution, helps verify these assumptions. If data deviates significantly, as seen in the Q-Q plots for sales revenue and discounts, transformations (e.g., logarithmic) can reduce skewness and stabilize variance, making data suitable for modeling and hypothesis testing. Comparing observed data to theoretical distributions, such as using Q–Q plots, helps identify discrepancies and informs necessary data transformations. For instance, Q–Q plots are commonly used to compare a dataset to a theoretical model, providing a visual assessment of goodness of fit. *[7]*
 
 Finally, understanding distributions supports informed decision-making in model selection and analysis. For example, non-normal data may require alternative approaches, such as generalized linear models or non-parametric methods. This ensures that the statistical methods applied are appropriate and lead to meaningful and reliable insights.
 
@@ -589,6 +589,9 @@ The correlation analysis highlighted that total quantity sold is a key driver of
 The linear regression model identified significant predictors for sales revenue, with total quantity sold being the most impactful variable. The model was trained and tested to ensure robust evaluation, with results providing actionable insights into revenue optimization. The emphasis on quantity underscores the importance of demand generation efforts in revenue growth strategies.
 
 This model sets a foundation for understanding sales drivers and evaluating the impact of operational decisions, such as order prioritization and regional targeting, on total sales revenue.
+
+A regression analysis will give you statistical insight into the factors that influence sales performance.
+If you take the time to come up with a viable regression question that focuses on two business-specific variables and use the right data, you’ll be able to accurately forecast expected sales performance and understand what elements of your strategy can remain the same, or what needs to change to meet new business goals.*[8]*
 ```{r}
 lm_sales_model <- lm(
   total_sales_revenue ~ avg_discount + total_quantity_sold, data = train_data1)
@@ -625,7 +628,7 @@ cat("RMSE:", RMSE, "\n")
 cat("R-squared:", R_squared, "\n")
 cat("Adjusted R-squared:", Adjusted_R_squared, "\n")
 ```
-The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 617.93 suggests that, on average, the model's predictions deviate from actual sales revenue by **617.93 units**. The **RMSE** of 824.23 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.
+The model's evaluation metrics suggest **moderate performance** in predicting total sales revenue. The **R-squared** value of 0.422 indicates that approximately **42% of the variance** in sales revenue is explained by the model, which means there is still considerable unexplained variability. The **Adjusted R-squared** value of 0.421 slightly adjusts for the number of predictors, indicating that the model’s explanatory power is similar even when accounting for the number of features. The **MAE** of 617.93 suggests that, on average, the model's predictions deviate from actual sales revenue by **617.93 units**. The **RMSE** of 824.23 indicates that larger errors are more significant, with the model often underestimating or overestimating revenue by larger amounts. Overall, while the model provides some useful insights, its prediction accuracy could be improved, possibly by incorporating additional relevant features or exploring alternative modeling techniques.When evaluating a model, it is crucial to assess its predictive ability, generalization capability, and overall quality. Evaluation metrics provide objective criteria to measure these aspects. The choice of evaluation metrics depends on the specific problem domain, the type of data, and the desired outcome.*[9]*
 
 To further assess the model, analyzing the residuals is essential to ensure they are normally distributed and exhibit no patterns, confirming the model’s assumptions. The moderate R-squared and high RMSE values suggest that additional variables, such as customer segmentation or seasonal trends, could improve the model’s explanatory power. Exploring non-linear models, interaction terms, or feature transformations may also enhance predictive accuracy. Validating the model on the test dataset and analyzing feature importance are logical next steps to refine the model and achieve better performance.
 
@@ -829,6 +832,10 @@ The dominance of total_quantity suggests it plays a critical role in determining
 
 This analysis highlights the importance of focusing on key features, such as total_quantity, when interpreting the model’s results or refining the dataset for improved performance. Understanding feature importance also guides feature selection and dimensionality reduction efforts in future iterations of the analysis.
 
+Feature importance  is a powerful tool in a data scientist’s toolkit. Data scientists can use feature importance to perform various tasks, such as feature selection and feature engineering, in a highly principled and interpretable way.
+
+Indeed, when we perform feature selection, we are deciding which features to keep as inputs to the model. A typical workflow might involve trial-and-error, i.e. dropping a feature (group), training a model, evaluating accuracy, and repeating. In a more directed workflow, we can decide to drop features that have low importance, as these features are known to have a small impact on the model’s decisions. Dropping these features can even improve a model as these features can add spurious contributions to the original model.*[10]*
+
 ```{r}
 # Extract feature importance from the model
 feature_importance <- classification_tree$variable.importance
@@ -954,6 +961,7 @@ cat("AUC:", auc_value, "\n")
 ```
 An AUC of 0.4995 indicates that the model's ability to distinguish between classes is nearly equivalent to random guessing. This suggests that the model is not effectively learning patterns from the data and requires improvement through better feature selection, data preprocessing, or model optimization.
 
+ROC curves and AUC are widely used to compare the performance of different classification models. By plotting the ROC curves of multiple models on the same graph, you can visually compare their performance. The model with the ROC curve closest to the top-left corner and the highest AUC is typically considered the best.*[11]*
 ```{r}
 # Extract coefficients from the model
 coefficients <- summary(logistic_model)$coefficients
@@ -1027,4 +1035,14 @@ The analysis conducted provided valuable insights into the dynamics of online sa
 
 [6] How do you formulate and test hypotheses based on your exploratory data analysis? (2023, August 25). https://www.linkedin.com/advice/1/how-do-you-formulate-test-hypotheses#:~:text=After%20exploratory%20data%20analysis%2C%20formulating,supporting%20or%20rejecting%20the%20hypothesis.
 
+[7] Codecademy Team, Exploratory Data Analysis: Data Visualization, Published on June 23, 2023; https://www.codecademy.com/article/eda-data-visualization
+
+[8] Jersey Gamers, How to Use Regression Analysis to Forecast Sales: A Step-by-Step Guide, Published on Oct 15, 2023;
+https://jerseygamers.com/article/how-to-use-regression-analysis-to-forecast-sales-a-step-by-step-guide/2835#toc-8
+
+[9] Aissa, G. (2023, February 16). The Basics of Model Evaluation. Medium; https://medium.com/@ghadaaissa16/the-basics-of-model-evaluation-8356b986c963
+
+[10] TruEra, How to Interpret and Use Feature Importance in ML Models; https://truera.com/ai-quality-education/explainability/how-to-interpret-and-use-feature-importance-in-ml-models/
+
+[11] Stroud, M. (2023). ROC and AUC Curve Explained. LinkedIn; https://www.linkedin.com/pulse/roc-auc-curve-explained-michael-stroud-8ayfc/a
 
